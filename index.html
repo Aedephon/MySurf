@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a1f2c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Surf Check">
-<title>Caloundra Surf Check</title>
+<title>Sunshine Coast Surf Check</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -20,18 +20,17 @@
     color:var(--ink);font:15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
   .wrap{max-width:720px;margin:0 auto;padding:20px 16px 48px}
   header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-  header h1{font:400 30px/1.1 "DM Serif Display",serif;margin:0}
-  header p{margin:4px 0 0;color:var(--muted);font-size:13px}
+  header h1{font:400 28px/1.1 "DM Serif Display",serif;margin:0}
+  header p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
   .refresh{flex:0 0 auto;border:1px solid var(--line);background:#ffffff10;color:var(--ink);border-radius:12px;padding:9px 12px;font:600 13px Inter,sans-serif;cursor:pointer}
   .refresh[disabled]{opacity:.5}
-  .refresh .spin{display:inline-block}
-  .refresh[disabled] .spin{animation:sp 1s linear infinite}
+  .refresh[disabled] .spin{display:inline-block;animation:sp 1s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
   .err{background:#c96a5a26;border:1px solid #c96a5a66;border-radius:12px;padding:10px 12px;font-size:13px;margin-top:12px}
-  .tabs{display:flex;gap:8px;margin:18px 0 16px}
-  .tab{flex:1;padding:12px 10px;border-radius:14px;border:1px solid var(--line);background:#ffffff08;color:var(--ink);font:600 15px Inter,sans-serif;cursor:pointer;text-align:left}
-  .tab small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
-  .tab[aria-selected="true"]{background:#ffffff14;border-color:var(--sand)}
+  .spots{display:flex;gap:8px;overflow-x:auto;margin:16px 0 14px;padding-bottom:6px;scroll-snap-type:x proximity}
+  .spot{flex:0 0 auto;scroll-snap-align:start;padding:9px 11px;border-radius:14px;border:1px solid var(--line);background:#ffffff08;color:var(--ink);font:600 14px Inter,sans-serif;cursor:pointer;text-align:left;min-width:128px;border-bottom:4px solid var(--r0)}
+  .spot small{display:block;font-weight:500;color:var(--muted);font-size:11px;margin-top:1px}
+  .spot[aria-selected="true"]{background:#ffffff18;border-color:var(--sand);border-bottom-color:inherit}
   .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;backdrop-filter:blur(6px)}
   .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
   .now{display:flex;gap:14px;align-items:flex-start}
@@ -45,7 +44,17 @@
   .stat .k{font-size:11px;color:var(--muted)}
   .stat .v{font-weight:600;font-size:14px}
   .desc{color:#d5e6ea;margin:0}
+  .desc p{margin:0 0 6px}
   .best{display:flex;gap:10px;align-items:center;margin-top:12px;padding:10px 12px;border-radius:12px;background:#f2c57c1a;border:1px solid #f2c57c40;font-size:13px}
+  .buoy{margin-top:10px;padding:9px 12px;border-radius:12px;background:#3fb8c91a;border:1px solid #3fb8c940;font-size:13px}
+  .board{display:grid;gap:6px;margin-top:10px}
+  .row{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:7px 8px;border-radius:12px;background:#ffffff08;cursor:pointer;border:1px solid transparent}
+  .row.sel{border-color:var(--sand)}
+  .row .sc{height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#0a1f2c;font-weight:700;font-size:14px}
+  .row .nm{font-weight:600;font-size:14px;line-height:1.2}
+  .row .nm small{display:block;color:var(--muted);font-weight:500;font-size:11.5px}
+  .row .ft{font-weight:600;font-size:13px;color:#d5e6ea;text-align:right}
+  .row .ft small{display:block;color:var(--muted);font-weight:500;font-size:11px}
   .chart svg,.viz svg{width:100%;height:auto;display:block}
   .viz svg{border-radius:12px}
   .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--muted);margin-top:8px}
@@ -81,64 +90,110 @@
 <body>
 <div class="wrap">
   <header>
-    <div><h1>Caloundra Surf Check</h1><p id="issued">Loading forecast…</p></div>
+    <div><h1>Sunshine Coast Surf Check</h1><p id="issued">Loading forecast…</p></div>
     <button class="refresh" id="refreshBtn" title="Fetch the latest forecast"><span class="spin">↻</span> Refresh</button>
   </header>
   <div id="errBox"></div>
-  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="spots" role="tablist" id="spots"></div>
   <div id="app"><div class="loading">Fetching swell, wind and tides…</div></div>
   <footer id="foot"></footer>
 </div>
 
 <script>
-/* ================= CONFIG — edit freely ================= */
+/* ======================= CONFIG — edit freely ======================= */
 const CONFIG = {
-  // Open-Meteo point for swell (snaps to nearest sea cell) and for wind/weather.
-  marinePoint: { lat: -26.80, lon: 153.17 },
-  weatherPoint: { lat: -26.80, lon: 153.14 },
-  // Weather model for wind: "bom_access_global" = Bureau of Meteorology ACCESS-G.
-  // Falls back to Open-Meteo's best blend if BOM data is missing.
-  weatherModel: "bom_access_global",
+  // Forecast zones: one offshore swell point + one coastal wind point each.
+  zones: {
+    noosa:     { name:"Noosa",     marine:[-26.40,153.17], weather:[-26.39,153.09] },
+    maroochy:  { name:"Maroochy",  marine:[-26.62,153.17], weather:[-26.64,153.10] },
+    caloundra: { name:"Caloundra", marine:[-26.78,153.18], weather:[-26.79,153.13] },
+  },
+  weatherModel: "bom_access_global",   // BOM ACCESS-G; falls back to Open-Meteo best blend
   forecastDays: 7,
   autoRefreshMinutes: 30,
-  // Map window (OpenStreetMap tiles, zoom 14)
-  map: { zoom: 14, north: -26.774, south: -26.826, west: 153.100, east: 153.172 },
-  // Swell markers drawn offshore on the map
-  swellMarks: [[-26.780,153.160],[-26.792,153.162],[-26.804,153.163],[-26.816,153.160],[-26.786,153.150],[-26.810,153.152]],
+  mapZoom: 14,
+  // Optional Queensland Government extras (fail quietly if unavailable)
+  buoyResource: "2bbef99e-9974-49b9-a316-57402b00609c",        // Coastal Data System – near real time waves
+  tidePackage: "mooloolaba-tide-gauge-predicted-interval-data", // MSQ / BOM tide predictions, Mooloolaba
 };
 
+/* Spot fields:
+   facing   = compass direction the break faces (offshore wind = facing + 180)
+   bestSwell / window = ideal swell direction and the range of directions that reach it
+   factor   = typical breaking face height ÷ open-ocean swell height (exposure)
+   type     = beach | point | reef ; tidePref = low | low-mid | mid | mid-high | high | any
+   lat/lon are approximate — nudge them if a pin sits off the break. */
 const SPOTS = {
-  "happy-valley": {
-    name: "Happy Valley", nick: "Happys", sub: "Passage-mouth beach break",
-    lat: -26.8078, lon: 153.1395,
-    facing: 95, bestSwell: 75, window: [15, 150], factor: 0.62, tidePref: "low",
-    guide: [
-      "Sand-bottom peaks off the spit at the mouth of the Pumicestone Passage, next to Bulcock Beach.",
-      "Sheltered from big surf, so it's usually smaller than Moffat. A good beginner, longboard and SUP wave.",
-      "Works best on the bottom half of the tide. High tide tends to fill it in.",
-      "Offshore winds are westerly. Easterlies and NE sea breezes blow straight onshore.",
-      "Strong tidal currents and shifting channels through the passage mouth, so watch the run-out tide."
-    ]
-  },
-  "moffat": {
-    name: "Moffat Beach", nick: "Moffats", sub: "Right-hand point + reef",
-    lat: -26.7895, lon: 153.1440,
-    facing: 90, bestSwell: 100, window: [30, 160], factor: 0.75, tidePref: null,
-    guide: [
-      "A crumbly right-hand point peeling off Moffat Head over rock, with a left reef on the north side.",
+  "noosa-first": { name:"First Point", region:"Noosa", sub:"Noosa · longboard right point", lat:-26.3838, lon:153.0912, zone:"noosa", buoy:"Noosa",
+    type:"point", facing:10, bestSwell:67, window:[20,145], factor:0.45, tidePref:"mid",
+    guide:["Noosa's most accessible right-hand point, peeling along the rocks into Main Beach. Classic longboard wave.",
+      "Faces north, so it needs an E–NE swell angle to wrap in. A straight SE swell mostly misses the points unless it's big.",
+      "Southerly to south-easterly winds blow offshore here, so it's the go-to when SE trades blow out the open beaches.",
+      "Best around mid tide. Gets very crowded when it's on."] },
+  "noosa-tea-tree": { name:"Tea Tree", region:"Noosa", sub:"Noosa · National Park point", lat:-26.3795, lon:153.0985, zone:"noosa", buoy:"Noosa",
+    type:"point", facing:340, bestSwell:67, window:[20,140], factor:0.5, tidePref:"mid",
+    guide:["A sheltered right-hand point inside Noosa National Park, a short walk from the end of Hastings St.",
+      "Best on an ENE swell with SE winds, which blow offshore here.",
+      "Best around mid tide. Watch the rocks and urchins; it's often crowded."] },
+  "noosa-nationals": { name:"Nationals", region:"Noosa", sub:"Noosa · National Park point", lat:-26.3768, lon:153.1050, zone:"noosa", buoy:"Noosa",
+    type:"point", facing:350, bestSwell:70, window:[20,145], factor:0.52, tidePref:"low-mid",
+    guide:["National Park point, running down towards Johnsons and Tea Tree on good swells.",
+      "Needs E–NE swell to wrap in; S to SE winds are offshore.",
+      "Best on the lower half of the tide; at high tide the rocks along the point get in the way."] },
+  "sunshine-beach": { name:"Sunshine Beach", region:"Noosa", sub:"Exposed beach break", lat:-26.4066, lon:153.1118, zone:"noosa", buoy:"Noosa",
+    type:"beach", facing:95, bestSwell:100, window:[15,175], factor:0.9, tidePref:"mid",
+    guide:["Open, east-facing beach just south of Noosa headland. Picks up much more swell than the points.",
+      "Best with W to SW offshore winds; the morning before the sea breeze is usually the window.",
+      "Sandbanks shift, so the best peak moves around. Strong rips when it's big. Better for intermediate surfers."] },
+  "coolum": { name:"Coolum", region:"Coolum", sub:"Beach + reef, Stumers Creek", lat:-26.5300, lon:153.0910, zone:"maroochy", buoy:"Mooloolaba",
+    type:"beach", facing:75, bestSwell:125, window:[30,175], factor:0.85, tidePref:"mid",
+    guide:["Main beach north of Point Perry, with Stumers Creek further north holding some of the best banks (and barrels) on its day.",
+      "Best on a SE swell with W to SW offshore winds. The headland gives a little shelter from southerlies at the southern end.",
+      "Usually best around mid tide. The NE-facing Point Perry / Three Bays coves need more size to work."] },
+  "mudjimba": { name:"Mudjimba", region:"Maroochy", sub:"Beach break opposite Old Woman Is.", lat:-26.6130, lon:153.1040, zone:"maroochy", buoy:"Mooloolaba",
+    type:"beach", facing:80, bestSwell:100, window:[20,170], factor:0.85, tidePref:"mid",
+    guide:["Beach break facing Old Woman (Mudjimba) Island, with the island's reef breaks out the back for those who paddle or boat out.",
+      "Best with W offshore winds and an E to SE swell.",
+      "Sandbanks vary; mid tide is usually the safest bet."] },
+  "alex": { name:"Alex Headland", region:"Maroochy", sub:"Right-hand point + beachies", lat:-26.6708, lon:153.1100, zone:"maroochy", buoy:"Mooloolaba",
+    type:"point", facing:40, bestSwell:130, window:[45,175], factor:0.7, tidePref:"mid",
+    guide:["'Alex' – a fast, punchy right off the headland (the Bluff is the tip), with beach breaks running north towards Maroochydore.",
+      "Best on a SE swell with SW offshore winds; the headland gives some shelter from S–SE winds.",
+      "Caters for all levels: the beach is mellow, the point is for experienced surfers. Busy on weekends."] },
+  "point-cartwright": { name:"Point Cartwright", region:"Kawana", sub:"Reef / point, 'Secrets'", lat:-26.6800, lon:153.1385, zone:"maroochy", buoy:"Mooloolaba",
+    type:"reef", facing:15, bestSwell:90, window:[30,165], factor:0.6, tidePref:"mid-high", tideMove:"falling",
+    guide:["Right-hand reef/point off the headland at the Mooloolah River mouth. Can be hollow and challenging.",
+      "Needs a decent E swell (it starts working around 1–1.5 m offshore). Southerly winds are offshore.",
+      "Best mid to high tide, ideally on the falling tide. Shallow reef: experienced surfers only."] },
+  "wurtulla": { name:"Wurtulla", region:"Kawana", sub:"Open beach breaks", lat:-26.7520, lon:153.1385, zone:"caloundra", buoy:"Caloundra",
+    type:"beach", facing:85, bestSwell:95, window:[20,170], factor:0.95, tidePref:"mid",
+    guide:["Long stretch of open beach breaks between Kawana and Currimundi; on its day some of the best beachies in the area.",
+      "Best on a medium E swell with light W offshores.",
+      "Fully exposed, so it's the first place to get blown out by onshores. Look for the best-shaped bank."] },
+  "dicky": { name:"Dicky Beach", region:"Caloundra", sub:"Beach break", lat:-26.7810, lon:153.1408, zone:"caloundra", buoy:"Caloundra",
+    type:"beach", facing:90, bestSwell:100, window:[20,170], factor:0.85, tidePref:"mid",
+    guide:["East-facing beach just north of Moffat, home of the old SS Dicky wreck.",
+      "Best with W offshores and an E–SE swell. Busier when Moffat is crowded.",
+      "Mid tide is usually best; banks change with storms."] },
+  "moffat": { name:"Moffat Beach", region:"Caloundra", sub:"Right-hand point + reef", lat:-26.7895, lon:153.1440, zone:"caloundra", buoy:"Caloundra",
+    type:"point", facing:80, bestSwell:100, window:[30,160], factor:0.75, tidePref:"any",
+    guide:["A crumbly right-hand point peeling off Moffat Head over rock, with a left reef on the north side.",
       "Best on an E to SE swell with light SW to W offshore winds. Surfs at all tides.",
-      "Long, sloping walls that suit longboards and mals. Rides can run up to around 200 m on good days.",
-      "Watch for the sucky bowl section near the rocks, urchins, and rips on bigger days.",
-      "Picks up more swell than Happys, so it's the call when Happys is too small."
-    ]
-  }
+      "Long, sloping walls that suit longboards and mals; watch the sucky bowl near the rocks and urchins."] },
+  "happy-valley": { name:"Happy Valley", region:"Caloundra", sub:"Passage-mouth beach break", lat:-26.8078, lon:153.1395, zone:"caloundra", buoy:"Caloundra",
+    type:"beach", facing:95, bestSwell:75, window:[15,150], factor:0.62, tidePref:"low-mid",
+    guide:["Sand-bottom peaks off the spit at the mouth of the Pumicestone Passage, next to Bulcock Beach.",
+      "Sheltered from big surf, so it's usually smaller than Moffat. A good beginner, longboard and SUP wave.",
+      "Works best on the bottom half of the tide; high tide fills it in.",
+      "Strong tidal currents and shifting channels through the passage mouth, so watch the run-out tide."] },
 };
-/* ======================================================== */
+/* ===================================================================== */
 
 const SESSIONS = [{key:"DAWN",label:"Dawn",from:5,to:8},{key:"MID",label:"Midday",from:10,to:13},{key:"ARVO",label:"Arvo",from:15,to:18}];
 const NAMES=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
 const compass = d => NAMES[Math.round(((d%360)+360)%360/22.5)%16];
 const angDiff = (a,b)=>{let d=Math.abs(a-b)%360;return d>180?360-d:d;};
+const signedDiff = (a,b)=>((a-b+540)%360)-180;
 const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
 const T = s => new Date(s.length===16 ? s+":00+10:00" : s);
 const TZ = "Australia/Brisbane";
@@ -148,240 +203,392 @@ const fmtTime = d => d.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digi
 const fmtHour = d => d.toLocaleTimeString("en-AU",{hour:"numeric",timeZone:TZ}).replace(" ","").toLowerCase();
 const fmtDay = (ds,long) => T(ds+"T12:00").toLocaleDateString("en-AU",{weekday:long?"long":"short",day:"numeric",month:"short",timeZone:TZ});
 const shortDay = ds => fmtDay(ds).split(" ")[0].replace(",","");
-const cap = s => s[0].toUpperCase()+s.slice(1);
+const cap = s => s ? s[0].toUpperCase()+s.slice(1) : s;
 const bearingVec = b => [Math.sin(b*Math.PI/180), -Math.cos(b*Math.PI/180)];
 const windCol = ws => ws<10?"#bfe6e6":ws<20?"#f2c57c":"#e8806a";
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-let DATA = null;        // {fetched, hours:[], extremes:[], modelUsed}
-let CUR_SPOT = "happy-valley", SEL = null;   // SEL = {date, key}
+let DATA = null;  // {fetched, zones:{key:{hours}}, tide:{source, extremes, range}, buoys:{}, modelUsed}
+let CUR = (()=>{ try{ return localStorage.getItem("surf-spot") || "happy-valley"; }catch(e){ return "happy-valley"; } })();
+let SEL = null;   // {date, key}
 
-/* ================= DATA ================= */
-async function getJSON(url){ const r = await fetch(url); if(!r.ok) throw new Error(`${r.status} from ${new URL(url).host}`); return r.json(); }
+/* ======================= DATA ======================= */
+async function getJSON(url){ const r=await fetch(url); if(!r.ok) throw new Error(`${r.status} from ${new URL(url).host}`); return r.json(); }
+const asList = j => Array.isArray(j) ? j : [j];
 
-async function fetchAll(){
-  const m = CONFIG.marinePoint, w = CONFIG.weatherPoint;
-  const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${m.lat}&longitude=${m.lon}&hourly=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,sea_level_height_msl,sea_surface_temperature&timezone=${encodeURIComponent(TZ)}&forecast_days=${CONFIG.forecastDays}&cell_selection=sea`;
-  const vars = "temperature_2m,precipitation,cloud_cover,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m";
-  const wxUrl = model => `https://api.open-meteo.com/v1/forecast?latitude=${w.lat}&longitude=${w.lon}&hourly=${vars}&timezone=${encodeURIComponent(TZ)}&forecast_days=${CONFIG.forecastDays}&wind_speed_unit=kmh${model?`&models=${model}`:""}`;
-  const [marine, wxModel, wxBest] = await Promise.all([
+async function fetchForecast(){
+  const keys=Object.keys(CONFIG.zones), Z=CONFIG.zones;
+  const mLat=keys.map(k=>Z[k].marine[0]).join(","), mLon=keys.map(k=>Z[k].marine[1]).join(",");
+  const wLat=keys.map(k=>Z[k].weather[0]).join(","), wLon=keys.map(k=>Z[k].weather[1]).join(",");
+  const tz=encodeURIComponent(TZ), d=CONFIG.forecastDays;
+  const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${mLat}&longitude=${mLon}&hourly=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,sea_level_height_msl,sea_surface_temperature&timezone=${tz}&forecast_days=${d}&cell_selection=sea`;
+  const vars="temperature_2m,precipitation,cloud_cover,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m";
+  const wxUrl=m=>`https://api.open-meteo.com/v1/forecast?latitude=${wLat}&longitude=${wLon}&hourly=${vars}&timezone=${tz}&forecast_days=${d}&wind_speed_unit=kmh${m?`&models=${m}`:""}`;
+  const [marine, wxM, wxB] = await Promise.all([
     getJSON(marineUrl),
-    CONFIG.weatherModel ? getJSON(wxUrl(CONFIG.weatherModel)).catch(()=>null) : Promise.resolve(null),
+    CONFIG.weatherModel ? getJSON(wxUrl(CONFIG.weatherModel)).catch(()=>null) : null,
     getJSON(wxUrl(null)).catch(()=>null)
   ]);
-  if(!wxModel && !wxBest) throw new Error("weather forecast unavailable");
-  return buildData(marine, wxModel, wxBest);
+  if(!wxM && !wxB) throw new Error("weather forecast unavailable");
+  const M=asList(marine), WM=wxM?asList(wxM):[], WB=wxB?asList(wxB):[];
+  let bom=0, tot=0; const zones={};
+  keys.forEach((k,zi)=>{ const r=buildZone(M[zi], WM[zi], WB[zi]); zones[k]={hours:r.hours}; bom+=r.bom; tot+=r.tot; });
+  return {fetched:Date.now(), zones, modelUsed: bom>tot*0.5?"BOM ACCESS-G":"Open-Meteo best blend"};
 }
 
-function buildData(marine, wxModel, wxBest){
-  const mh = marine.hourly, idx = new Map();
-  const pick = (name,i,t) => {           // BOM model value, falling back to best blend
-    const a = wxModel?.hourly?.[name]?.[wxModel._ix?.get(t)];
-    if(a!=null) return [a, true];
-    const b = wxBest?.hourly?.[name]?.[wxBest._ix?.get(t)];
-    return [b ?? null, false];
-  };
-  [wxModel, wxBest].forEach(w=>{ if(w){ w._ix=new Map(); w.hourly.time.forEach((t,i)=>w._ix.set(t,i)); }});
-  let bomCount=0, total=0;
-  const hours = mh.time.map((ts,i)=>{
-    const h = mh.wave_height[i], sH = mh.swell_wave_height?.[i];
-    const useSwell = sH!=null && h!=null && sH >= 0.4*h;
+function buildZone(marine, wxModel, wxBest){
+  const mh=marine.hourly;
+  [wxModel,wxBest].forEach(w=>{ if(w){ w._ix=new Map(); w.hourly.time.forEach((t,i)=>w._ix.set(t,i)); }});
+  const pick=(name,t)=>{ const a=wxModel?.hourly?.[name]?.[wxModel._ix.get(t)]; if(a!=null) return [a,true];
+    const b=wxBest?.hourly?.[name]?.[wxBest._ix.get(t)]; return [b??null,false]; };
+  let bom=0, tot=0;
+  const hours=mh.time.map((ts,i)=>{
+    const h=mh.wave_height[i], sH=mh.swell_wave_height?.[i];
+    const useSwell = sH!=null && h!=null && sH>=0.4*h;
     const dirDeg = useSwell ? mh.swell_wave_direction[i] : mh.wave_direction[i];
     const p = useSwell ? mh.swell_wave_period[i] : mh.wave_period[i];
-    const [ws, fromBom] = pick("wind_speed_10m",i,ts); total++; if(fromBom) bomCount++;
-    const [wd] = pick("wind_direction_10m",i,ts), [gust]=pick("wind_gusts_10m",i,ts), [temp]=pick("temperature_2m",i,ts),
-          [rain]=pick("precipitation",i,ts), [cloud]=pick("cloud_cover",i,ts), [code]=pick("weather_code",i,ts);
-    const t=T(ts);
-    return {ts, t, date:ts.slice(0,10), hour:+ts.slice(11,13), h, p:p!=null?Math.round(p):null, dirDeg, dir:dirDeg!=null?compass(dirDeg):"–",
+    const [ws,fromBom]=pick("wind_speed_10m",ts); tot++; if(fromBom) bom++;
+    const [wd]=pick("wind_direction_10m",ts),[gust]=pick("wind_gusts_10m",ts),[temp]=pick("temperature_2m",ts),
+          [rain]=pick("precipitation",ts),[cloud]=pick("cloud_cover",ts),[code]=pick("weather_code",ts);
+    return {ts, t:T(ts), date:ts.slice(0,10), hour:+ts.slice(11,13), h, p:p!=null?Math.round(p):null, dirDeg, dir:dirDeg!=null?compass(dirDeg):"–",
       swellH:sH, windWave:mh.wind_wave_height?.[i], ws:ws!=null?Math.round(ws):null, wdDeg:wd, wd:wd!=null?compass(wd):"–",
       gust:gust!=null?Math.round(gust):null, temp, rain, cloud, code, sl:mh.sea_level_height_msl?.[i], sst:mh.sea_surface_temperature?.[i]};
   }).filter(x=>x.h!=null && x.ws!=null && x.p!=null && x.dirDeg!=null && x.wdDeg!=null);
-  // tide extremes from hourly sea level (parabolic refinement)
-  const extremes=[];
-  for(let i=1;i<hours.length-1;i++){
-    const a=hours[i-1].sl,b=hours[i].sl,c=hours[i+1].sl;
-    if(a==null||b==null||c==null) continue;
-    const hi = b>=a && b>c, lo = b<=a && b<c;
-    if(!hi && !lo) continue;
-    const den=a-2*b+c, off=den?0.5*(a-c)/den:0;
-    extremes.push({t:new Date(hours[i].t.getTime()+off*3600e3), h:b-0.25*(a-c)*off, type:hi?"H":"L"});
-  }
-  const modelUsed = bomCount > total*0.5 ? "BOM ACCESS-G" : "Open-Meteo best blend";
-  return {fetched:Date.now(), hours, extremes, modelUsed};
+  return {hours, bom, tot};
 }
 
-function revive(d){ d.hours.forEach(h=>h.t=new Date(h.t)); d.extremes.forEach(e=>e.t=new Date(e.t)); return d; }
-function saveCache(d){ try{ localStorage.setItem("surfcache-v1", JSON.stringify(d)); }catch(e){} }
-function loadCache(){ try{ const s=localStorage.getItem("surfcache-v1"); return s?revive(JSON.parse(s)):null; }catch(e){ return null; } }
+function findExtremes(series, win){ // series [{t,h}], win = half-window in samples
+  const ex=[];
+  for(let i=win;i<series.length-win;i++){
+    const b=series[i].h; let hi=true, lo=true;
+    for(let k=i-win;k<=i+win;k++){ if(k===i) continue; if(series[k].h>b || (k>i && series[k].h===b)) hi=false; if(series[k].h<b || (k>i && series[k].h===b)) lo=false; }
+    if(!hi && !lo) continue;
+    let t=series[i].t, h=b;
+    if(win===1){ const a=series[i-1].h,c=series[i+1].h, den=a-2*b+c, off=den?0.5*(a-c)/den:0; t=new Date(t.getTime()+off*3600e3); h=b-0.25*(a-c)*off; }
+    ex.push({t,h,type:hi?"H":"L"});
+  }
+  return ex;
+}
 
-/* ================= RATING ================= */
+/* Official tide predictions (Maritime Safety Queensland / BOM, Mooloolaba, 10-min, metres above LAT) */
+async function fetchTides(){
+  const pkg=await getJSON(`https://www.data.qld.gov.au/api/3/action/package_show?id=${CONFIG.tidePackage}`);
+  const now=new Date(), yrs=[now.getFullYear()]; if(now.getMonth()===11 && now.getDate()>22) yrs.push(now.getFullYear()+1);
+  const res=pkg.result.resources;
+  let pts=[];
+  for(const y of yrs){
+    const r=res.find(r=>String(r.name||"").startsWith(String(y))) || res.find(r=>String(r.name||"").includes(String(y)) && !/-/.test(String(r.name).slice(0,9)));
+    if(!r) continue;
+    const txt=await (await fetch(String(r.url).replace(/^http:/,"https:"))).text();
+    const re=/(\d{2})(\d{2})(\d{4})(\d{2})(\d{2})[,\s]+(-?\d+\.\d+)/g; let m;
+    const lo=now.getTime()-36*3600e3, hi=now.getTime()+(CONFIG.forecastDays+1)*86400e3;
+    while((m=re.exec(txt))){ const t=new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00+10:00`).getTime(); if(t>=lo&&t<=hi) pts.push({t:new Date(t),h:+m[6]}); }
+  }
+  if(pts.length<100) throw new Error("no tide rows");
+  pts.sort((a,b)=>a.t-b.t);
+  return {source:"MSQ predictions (Mooloolaba)", extremes:findExtremes(pts,6), lat:true};
+}
+
+/* Live wave buoys (Queensland Government Coastal Data System) */
+async function fetchBuoys(){
+  const j=await getJSON(`https://www.data.qld.gov.au/api/3/action/datastore_search?resource_id=${CONFIG.buoyResource}&limit=3000&sort=_id%20desc`);
+  const f=j.result.fields.map(x=>x.id), find=re=>f.find(n=>re.test(n));
+  const fSite=find(/^site$/i)||find(/site(?!.*num)/i), fTime=find(/date|time/i), fHs=find(/^hs/i), fTp=find(/^tp/i), fDir=find(/^dir|direction/i), fSST=find(/sst/i), fHmax=find(/hmax/i);
+  if(!fSite||!fHs) throw new Error("buoy schema");
+  const want=new Set(Object.values(SPOTS).map(s=>s.buoy)), out={};
+  for(const r of j.result.records){
+    const site=String(r[fSite]).trim(), key=[...want].find(w=>site.toLowerCase()===w.toLowerCase());
+    if(!key || out[key]) continue;
+    const hs=+r[fHs]; if(!(hs>0)) continue;
+    let ts=String(r[fTime]||""); let t=new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(ts)?ts:ts.replace(" ","T")+"+10:00");
+    if(isNaN(t)){ const m=ts.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\D+(\d{1,2}):(\d{2})/); if(m) t=T(`${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}T${m[4].padStart(2,"0")}:${m[5]}`); }
+    const tp=+r[fTp], dir=+r[fDir], sst=+r[fSST], hmax=+r[fHmax];
+    out[key]={hs, hmax:hmax>0?hmax:null, tp:tp>0?tp:null, dir:dir>=0&&dir<=360?dir:null, sst:sst>0&&sst<40?sst:null, t:isNaN(t)?null:t};
+  }
+  if(!Object.keys(out).length) throw new Error("no buoy rows");
+  return out;
+}
+
+function modelTides(zoneHours){
+  const s=zoneHours.filter(h=>h.sl!=null).map(h=>({t:h.t,h:h.sl}));
+  return {source:"Open-Meteo sea-level model (approx.)", extremes:findExtremes(s,1), lat:false};
+}
+
+function revive(d){
+  Object.values(d.zones).forEach(z=>z.hours.forEach(h=>h.t=new Date(h.t)));
+  if(d.tide) d.tide.extremes.forEach(e=>e.t=new Date(e.t));
+  if(d.buoys) Object.values(d.buoys).forEach(b=>{ if(b.t) b.t=new Date(b.t); });
+  return d;
+}
+function saveCache(d){ try{ localStorage.setItem("surfcache-v2", JSON.stringify(d)); }catch(e){} }
+function loadCache(){ try{ const s=localStorage.getItem("surfcache-v2"); return s?revive(JSON.parse(s)):null; }catch(e){ return null; } }
+
+/* ======================= CONDITIONS MODEL ======================= */
+const hoursOf = spot => DATA.zones[spot.zone]?.hours || [];
 function tideAt(t){
-  const ex=DATA.extremes;
+  const ex=DATA.tide?.extremes||[];
   for(let i=0;i<ex.length-1;i++){
     const a=ex[i], b=ex[i+1];
     if(t>=a.t && t<b.t && a.type!==b.type){
-      const f=(t-a.t)/(b.t-a.t), lo=Math.min(a.h,b.h), hi=Math.max(a.h,b.h);
-      const h=a.h+(b.h-a.h)*(1-Math.cos(Math.PI*f))/2;
-      return {h, norm:hi>lo?(h-lo)/(hi-lo):.5, rising:b.type==="H"};
+      const f=(t-a.t)/(b.t-a.t), lo=Math.min(a.h,b.h), hi=Math.max(a.h,b.h), h=a.h+(b.h-a.h)*(1-Math.cos(Math.PI*f))/2;
+      return {h, norm:hi>lo?(h-lo)/(hi-lo):.5, rising:b.type==="H", range:hi-lo, next:b};
     }
   }
   return null;
 }
+const TIDE_CENTER={low:.15,"low-mid":.33,mid:.5,"mid-high":.67,high:.85};
+function tideFactor(spot,tide){
+  if(!tide || !spot.tidePref || spot.tidePref==="any") return 1;
+  const c=TIDE_CENTER[spot.tidePref], d=Math.abs(tide.norm-c);
+  let f=1-0.55*Math.max(0,d-0.18)/0.62;
+  if(spot.tideMove==="falling" && tide.rising) f*=.93;
+  if(spot.tideMove==="rising" && !tide.rising) f*=.93;
+  return clamp(f,.35,1);
+}
 function windState(spot, ws, wdDeg){
-  if(ws<=8) return {k:"glassy", w:1};
   const d=angDiff(wdDeg,(spot.facing+180)%360);
-  let k,b;
-  if(d<=40){k="offshore";b=1}else if(d<=80){k="cross-offshore";b=.85}else if(d<=105){k="cross-shore";b=.6}
-  else if(d<=140){k="cross-onshore";b=.45}else{k="onshore";b=.32}
-  const w = k==="offshore" ? (ws>30?.75:1) : clamp(b-Math.max(0,ws-10)*.02,.05,1);
-  return {k,w};
+  const k = ws<=7 ? "glassy" : d<=40?"offshore":d<=80?"cross-offshore":d<=105?"cross-shore":d<=140?"cross-onshore":"onshore";
+  const str = ws<=7?"calm":ws<15?"light":ws<25?"moderate":ws<35?"fresh":"strong";
+  return {k, str, d};
+}
+function windScore(w, ws, p){
+  if(w.k==="glassy") return 1;
+  if(w.k==="offshore") return ws>35?.65:ws>28?.85:1;
+  const base={"cross-offshore":.88,"cross-shore":.62,"cross-onshore":.45,"onshore":.32}[w.k];
+  let s=base-Math.max(0,ws-10)*.022;
+  if(p>=10 && (w.k==="onshore"||w.k==="cross-onshore") && ws<20) s+=.08;  // groundswell holds shape better in light onshore
+  return clamp(s,.05,1);
 }
 function rate(spot, s){
-  const face = s.h*spot.factor;
-  const size = face<0.2?0 : face<0.5?Math.pow(face/0.5,1.5) : face<=1.5?1 : Math.max(.35,1-(face-1.5)/1.5);
-  const per = clamp(.35+(s.p-5)*.13,.35,1);
-  const inWin = s.dirDeg>=spot.window[0] && s.dirDeg<=spot.window[1];
-  const dd = angDiff(s.dirDeg,spot.bestSwell);
-  const dir = !inWin?.2 : dd<=25?1 : dd<=50?.85 : dd<=75?.62 : .4;
-  const wind = windState(spot,s.ws,s.wdDeg);
-  const tide = tideAt(s.t);
-  const tf = spot.tidePref==="low" && tide ? 1-.45*Math.max(0,tide.norm-.45)/.55 : 1;
-  const score = 10*size*(.3+.7*wind.w)*(.45+.55*per)*dir*tf;
-  return {score:Math.round(score*10)/10, face, wind, tide, inWin};
+  const face=s.h*spot.factor*dirSize(spot,s.dirDeg);
+  const size = face<0.2?0 : face<0.5?Math.pow(face/0.5,1.5) : face<=1.6?1 : Math.max(.35,1-(face-1.6)/1.6);
+  const per = clamp(.3+(s.p-5)*.1,.3,1);                 // 5s→.3, 8s→.6, 12s→1
+  const wind = windState(spot,s.ws,s.wdDeg), ww=windScore(wind,s.ws,s.p);
+  const tide = tideAt(s.t), tf=tideFactor(spot,tide);
+  const closeout = spot.type==="beach" && tide && tide.norm<.25 && face>1.3 ? .85 : 1;
+  const score = 10*size*(.28+.72*ww)*(.45+.55*per)*tf*closeout;
+  return {score:Math.round(score*10)/10, face, wind, ww, tide, tf, closeout:closeout<1, inWin:inWindow(spot,s.dirDeg)};
+}
+const inWindow=(spot,deg)=>deg>=spot.window[0]&&deg<=spot.window[1];
+function dirSize(spot,deg){ // how much of the swell reaches the break given its angle
+  if(!inWindow(spot,deg)) return .3;
+  const dd=angDiff(deg,spot.bestSwell);
+  return dd<=20?1 : dd<=45?.88 : dd<=70?.68 : .5;
 }
 const LEVELS=[[1.2,"Flat","--r0"],[2.6,"Poor","--r1"],[4,"Poor–Fair","--r2"],[5.5,"Fair","--r3"],[7.2,"Good","--r4"],[99,"Epic","--r5"]];
-const level = sc => LEVELS.find(l=>sc<l[0]);
-const col = sc => `var(${level(sc)[2]})`;
+const level=sc=>LEVELS.find(l=>sc<l[0]);
+const col=sc=>`var(${level(sc)[2]})`;
 
-/* ================= WORDS ================= */
+/* ======================= WORDS ======================= */
 function sizeWords(f){
   if(f<0.2) return "flat"; if(f<0.4) return "ankle to knee high"; if(f<0.6) return "knee to thigh high";
   if(f<0.8) return "waist high"; if(f<1.0) return "waist to chest high"; if(f<1.3) return "chest to head high";
   if(f<1.7) return "head high to a bit overhead"; if(f<2.3) return "overhead"; return "well overhead";
 }
-const ft = m => { const a=Math.max(1,Math.round(m*3.28*0.8)), b=Math.max(a+1,Math.round(m*3.28*1.15)); return `${a}–${b} ft`; };
-const swellType = p => p>=10?"groundswell":p>=8?"mid-period swell":"short-period windswell";
-const windWords = w => ({glassy:"glassy","offshore":"clean offshore","cross-offshore":"cross-offshore and groomed","cross-shore":"cross-shore with some texture","cross-onshore":"cross-onshore and bumpy","onshore":"onshore and choppy"})[w.k];
-const WX = c => c==null?"–":c===0?"Clear":c<=2?"Mostly sunny":c===3?"Cloudy":c<=48?"Fog":c<=57?"Drizzle":c<=67?"Rain":c<=77?"Snow":c<=82?"Showers":c<=99?"Storms":"–";
+const ft=m=>{ const a=Math.max(1,Math.round(m*3.28*0.8)), b=Math.max(a+1,Math.round(m*3.28*1.15)); return `${a}–${b} ft`; };
+const swellType=p=>p>=12?"groundswell":p>=8?"mid-period swell":"short-period windswell";
+const windShort=w=>({glassy:"glassy","offshore":"offshore","cross-offshore":"cross-offshore","cross-shore":"cross-shore","cross-onshore":"cross-onshore","onshore":"onshore"})[w.k];
+const WX=c=>c==null?"–":c===0?"Clear":c<=2?"Mostly sunny":c===3?"Cloudy":c<=48?"Fog":c<=57?"Drizzle":c<=67?"Rain":c<=77?"Snow":c<=82?"Showers":c<=99?"Storms":"–";
 
-function slotDesc(s,r){
-  let txt = `${cap(sizeWords(r.face))} ${s.dir} ${swellType(s.p)} (${s.p} s). Wind ${s.ws} km/h ${s.wd}${s.gust&&s.gust>s.ws+10?`, gusting ${s.gust}`:""}, ${windWords(r.wind)}`;
-  if(r.wind.k!=="glassy" && r.wind.k!=="offshore" && s.ws>=20) txt += ", likely blown out";
-  txt += ".";
-  if(!r.inWin) txt += " Swell angle is mostly missing this spot.";
-  if(r.tide) txt += ` Tide ${r.tide.rising?"rising":"dropping"}${r.tide.norm<.3?", near low":r.tide.norm>.7?", near high":", mid"}.`;
+function headline(r){
+  const w=r.wind;
+  const surface = w.k==="glassy"?"glassy" : w.k==="offshore"?(w.str==="fresh"||w.str==="strong"?"clean but windy offshore":"clean offshore")
+    : w.k==="cross-offshore"?"groomed cross-offshore" : w.k==="cross-shore"?(w.str==="light"?"light cross-shore":"choppy cross-shore")
+    : w.str==="light"?"lightly textured":"blown out";
+  return `${cap(sizeWords(r.face))}, ${surface}`;
+}
+
+function describe(spot, s, r){
+  const out=[];
+  // 1. swell
+  const q = s.p>=12 ? "Long-period groundswell: well-spaced lines with real push and longer rides, but expect waits between sets."
+          : s.p>=8 ? "Mid-period swell: reasonable shape and power."
+          : "Short-period windswell: weak, close-together waves without much push.";
+  let sw = `${cap(sizeWords(r.face))} (${ft(r.face)}) from ${s.h.toFixed(1)} m of ${s.dir} swell at ${s.p} s. ${q}`;
+  if(!r.inWin) sw += ` The ${s.dir} angle mostly misses ${spot.name}, so it'll be much smaller than the open beaches.`;
+  else { const dd=signedDiff(s.dirDeg,spot.bestSwell);
+    if(Math.abs(dd)>45) sw += ` The angle is too ${dd>0?"southerly":"northerly"} for it to line up properly here, so it'll be smaller and less consistent.`; }
+  out.push(sw);
+  // 2. wind
+  const w=r.wind; let wt;
+  const sp = `${s.ws} km/h ${s.wd}${s.gust&&s.gust>s.ws+12?` (gusting ${s.gust})`:""}`;
+  if(w.k==="glassy") wt=`Barely any wind (${s.ws} km/h ${s.wd}), so the surface should be glassy${s.gust&&s.gust>20?`, though gusts to ${s.gust} km/h may ruffle it`:""}.`;
+  else if(w.k==="offshore") wt = w.str==="light"||w.str==="moderate" ? `${cap(w.str)} offshore (${sp}) holding the faces up and grooming them clean.` : `${cap(w.str)} offshore (${sp}): clean faces, but it'll be hard to paddle into waves and spray will blow back off the lip.`;
+  else if(w.k==="cross-offshore") wt=`${cap(w.str)} cross-offshore (${sp}): mostly clean, with a bit of side texture.`;
+  else if(w.k==="cross-shore") wt = w.str==="light" ? `Light cross-shore (${sp}): some texture but workable.` : `${cap(w.str)} cross-shore (${sp}) putting side-chop on the face; sections will close out down the line.`;
+  else wt = w.str==="light" ? `Light ${w.k} (${sp}) adding texture${s.p>=10?", though the longer-period swell should still hold some shape":""}.` : `${cap(w.str)} ${w.k} (${sp}) pushing the waves over early: bumpy, crumbly and hard to read.`;
+  out.push(wt);
+  // 3. tide
+  if(r.tide){
+    const t=r.tide, phase=t.norm<.3?"low":t.norm>.7?"high":"mid", dir=t.rising?"rising":"falling";
+    let tt=`${cap(phase)} tide, ${dir}${t.next?` (${t.next.type==="H"?"high":"low"} at ${fmtTime(t.next.t)})`:""}. `;
+    if(spot.type==="beach"){
+      tt += phase==="low" ? (r.face>1.1?"Lower tide makes the banks break steeper and hollower, but bigger sets are likely to close out.":"Lower tide steepens the waves over the banks: punchier and hollower.")
+          : phase==="high" ? "Higher tide makes the waves fuller and softer, with some backwash and shorebreak."
+          : t.rising ? "Mid tide on the push is usually the most consistent window at a beach break." : "Mid tide is usually the most versatile stage for the banks.";
+    } else {
+      const pref=spot.tidePref;
+      if(pref==="any") tt+="This break handles all tides.";
+      else { const good=tideFactor(spot,t)>.9; tt += good ? `That suits ${spot.name}, which likes ${pref.replace("-"," to ")} tide${spot.tideMove?` (best ${spot.tideMove})`:""}.` : `${spot.name} prefers ${pref.replace("-"," to ")} tide, so it's off its best right now${spot.type==="reef"&&phase==="low"?" and the reef will be shallow":""}.`; }
+    }
+    if(t.range>1.75) tt+=" Big spring-tide range today, so conditions will change quickly through the tide and currents will be stronger.";
+    out.push(tt);
+  }
+  return out;
+}
+function boardFor(spot,r,s){
+  if(r.face<0.2) return "Flat. Go for a swim instead.";
+  const b = r.face<0.7 ? "longboard or foamie" : r.face<1.3 ? (spot.type==="point"?"mal, mid-length or fish":"fish or groveller") : "your shortboard or a step-up";
+  return `Board: ${b}.`;
+}
+
+/* ======================= SESSIONS & DAYS ======================= */
+const dates = spot => [...new Set(hoursOf(spot).map(h=>h.date))];
+const hoursForDay = (spot,date) => hoursOf(spot).filter(h=>h.date===date);
+function session(spot,date,key){
+  const S=SESSIONS.find(x=>x.key===key), hs=hoursForDay(spot,date).filter(h=>h.hour>=S.from&&h.hour<=S.to);
+  if(!hs.length) return null;
+  let best=null; hs.forEach(h=>{ const r=rate(spot,h); if(!best||r.score>best.r.score) best={s:h,r}; });
+  return {...best,key,label:S.label,date,end:T(`${date}T${String(S.to).padStart(2,"0")}:59`)};
+}
+const allSessions = spot => dates(spot).flatMap(d=>SESSIONS.map(S=>session(spot,d,S.key)).filter(Boolean));
+
+function windStory(spot,date){
+  const hs=hoursForDay(spot,date).filter(h=>h.hour>=5&&h.hour<=19); if(hs.length<8) return "";
+  const st=hs.map(h=>({h, w:windState(spot,h.ws,h.wdDeg)}));
+  const good=x=>x.w.k==="glassy"||x.w.k==="offshore"||x.w.k==="cross-offshore"||(x.w.str==="light"&&x.w.k==="cross-shore");
+  const bad=x=>(x.w.k==="onshore"||x.w.k==="cross-onshore"||x.w.k==="cross-shore") && x.h.ws>=15;
+  let txt="";
+  if(good(st[0])||good(st[1])){
+    const turn=st.find(x=>x.h.hour>=7 && bad(x));
+    if(turn) txt=`${st[0].w.k==="glassy"?"Calm":cap(st[0].w.k)} early, then the ${turn.h.wd} breeze kicks in from about ${fmtHour(turn.h.t)}.`;
+    else txt="Favourable wind for most of the day.";
+  } else if(st.every(bad)) txt="Onshore all day, with no clean morning window.";
+  else if(bad(st[0])) txt="Onshore from first light, so the best you'll get is the lightest-wind hour.";
+  const eve=st.filter(x=>x.h.hour>=17);
+  if(eve.length && eve.some(x=>x.h.ws<10) && st.some(x=>x.h.hour<17&&bad(x))) txt+=" Should glass off late arvo as the breeze drops.";
   return txt;
 }
-function feel(spot, r, s){
-  if(r.face<0.2) return "Flat. Go for a swim instead.";
-  const shape = r.wind.k==="glassy"||r.wind.k==="offshore" ? "clean, peeling faces" : r.wind.k==="cross-offshore" ? "fairly clean lines" : r.wind.w>.4 ? "a bit of texture but rideable walls" : "messy, crumbly waves";
-  const power = s.p>=10 ? "decent push behind it" : s.p>=8 ? "moderate power" : "soft and weak";
-  const board = r.face<0.7 ? "longboard or foamie" : r.face<1.3 ? (spot.nick==="Moffats"?"mal or fish":"mid-length or fish") : "your shortboard or a step-up";
-  return `Expect ${shape}, ${power}. Take a ${board}.`;
-}
-
-/* ================= SESSIONS ================= */
-function hoursFor(date){ return DATA.hours.filter(h=>h.date===date); }
-function dates(){ return [...new Set(DATA.hours.map(h=>h.date))]; }
-function session(spot, date, key){
-  const S=SESSIONS.find(x=>x.key===key);
-  const hs=hoursFor(date).filter(h=>h.hour>=S.from && h.hour<=S.to);
-  if(!hs.length) return null;
-  let best=null;
-  hs.forEach(h=>{ const r=rate(spot,h); if(!best||r.score>best.r.score) best={s:h,r}; });
-  return {...best, key, label:S.label, date, end:T(`${date}T${String(S.to).padStart(2,"0")}:59`)};
-}
-function allSessions(spot){ const out=[]; dates().forEach(d=>SESSIONS.forEach(S=>{ const x=session(spot,d,S.key); if(x) out.push(x); })); return out; }
-
-function daySummary(spot, date, prevDate){
-  const ss = SESSIONS.map(S=>session(spot,date,S.key)).filter(Boolean);
-  if(!ss.length) return null;
-  const best = ss.reduce((a,b)=>b.r.score>a.r.score?b:a);
-  const avg = ds => { const hs=hoursFor(ds).filter(h=>h.hour>=5&&h.hour<=18); return hs.reduce((a,h)=>a+h.h,0)/Math.max(1,hs.length); };
-  let trend="";
-  if(prevDate){ const a=avg(date), b=avg(prevDate); trend = a>b+0.15?"Swell building. ":a<b-0.15?"Swell easing. ":"Similar size to yesterday. "; }
-  let t = `${trend}${cap(sizeWords(best.r.face))} at best (${ft(best.r.face)}) on the ${best.s.p} s ${best.s.dir} swell. `;
-  t += `Best around ${fmtHour(best.s.t)} (${level(best.r.score)[1].toLowerCase()}): ${windWords(best.r.wind)}. `;
-  if(ss.every(x=>x.r.wind.w<.5)) t += "Onshore most of the day, so get in at first light before the breeze fills in. ";
-  if(spot.tidePref==="low"){
-    const lows = DATA.extremes.filter(x=>x.type==="L" && dayKey(x.t)===date && hourOf(x.t)>=5 && hourOf(x.t)<=18);
-    if(lows.length) t += `Aim for the couple of hours either side of the ${fmtTime(lows[0].t)} low. `;
+function daySummary(spot,date,prevDate){
+  const ss=SESSIONS.map(S=>session(spot,date,S.key)).filter(Boolean); if(!ss.length) return null;
+  const best=ss.reduce((a,b)=>b.r.score>a.r.score?b:a);
+  const avg=ds=>{const hs=hoursForDay(spot,ds).filter(h=>h.hour>=5&&h.hour<=18); return hs.reduce((a,h)=>a+h.h,0)/Math.max(1,hs.length);};
+  let t="";
+  if(prevDate){ const a=avg(date), b=avg(prevDate); t += a>b+0.15?"Swell building. ":a<b-0.15?"Swell easing. ":""; }
+  t += `${cap(sizeWords(best.r.face))} at best (${ft(best.r.face)}) on the ${best.s.p} s ${best.s.dir} ${swellType(best.s.p).replace("short-period ","")}. Best around ${fmtHour(best.s.t)}. `;
+  t += windStory(spot,date)+" ";
+  if(spot.tidePref && spot.tidePref!=="any" && DATA.tide){
+    const want = spot.tidePref.startsWith("low") ? "L" : spot.tidePref.endsWith("high")||spot.tidePref==="high" ? "H" : null;
+    const ex=DATA.tide.extremes.filter(x=>dayKey(x.t)===date && hourOf(x.t)>=5 && hourOf(x.t)<=18 && (!want||x.type===want));
+    if(want && ex.length) t+=`Tide-wise, aim for either side of the ${fmtTime(ex[0].t)} ${want==="L"?"low":"high"}.`;
+    else if(!want){ const lo=DATA.tide.extremes.find(x=>dayKey(x.t)===date&&x.type==="L"&&hourOf(x.t)>=4&&hourOf(x.t)<=16); if(lo) t+=`Mid tide on the push after the ${fmtTime(lo.t)} low is a good bet.`; }
   }
-  return {text:t.trim(), best, ss};
+  return {text:t.trim().replace(/\s+/g," "), best, ss};
 }
 
-/* ================= RENDER ================= */
-function render(key){
-  if(key) CUR_SPOT=key;
-  const spot=SPOTS[CUR_SPOT], now=new Date();
-  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b.dataset.k===CUR_SPOT));
-  if(!DATA || !DATA.hours.length) return;
-  const nowH = DATA.hours.find(h=>h.t.getTime()+3600e3>now) || DATA.hours[DATA.hours.length-1];
-  const r = rate(spot,nowH), lv=level(r.score);
-  const upcoming = allSessions(spot).filter(x=>x.end>now);
-  const top = upcoming.length?upcoming.reduce((a,b)=>b.r.score>a.r.score?b:a):null;
-  if(!SEL || !upcoming.find(x=>x.date===SEL.date&&x.key===SEL.key)) SEL = upcoming[0]?{date:upcoming[0].date,key:upcoming[0].key}:null;
+/* ======================= RENDER ======================= */
+function renderSpots(){
+  const now=new Date();
+  document.getElementById("spots").innerHTML = Object.entries(SPOTS).map(([k,s])=>{
+    let sc=null; if(DATA){ const h=hoursOf(s).find(h=>h.t.getTime()+3600e3>now); if(h) sc=rate(s,h).score; }
+    return `<button class="spot" role="tab" data-k="${k}" aria-selected="${k===CUR}" style="border-bottom-color:${sc!=null?col(sc):"var(--r0)"}">${esc(s.name)}<small>${esc(s.region)}${sc!=null?` · ${sc.toFixed(1)}`:""}</small></button>`;
+  }).join("");
+  document.querySelectorAll(".spot").forEach(b=>b.onclick=()=>render(b.dataset.k));
+  const on=document.querySelector('.spot[aria-selected="true"]'); if(on){ const p=on.parentElement; p.scrollLeft=on.offsetLeft-16; }
+}
 
-  let html = `<section class="card">
-    <div class="eyebrow">${spot.name} · ${nowH.t<=now?"Right now":"Next"}: ${fmtDay(nowH.date,true)}, ${fmtHour(nowH.t)}</div>
+function render(key){
+  if(key){ CUR=key; try{ localStorage.setItem("surf-spot",key); }catch(e){} }
+  if(!SPOTS[CUR]) CUR="happy-valley";
+  renderSpots();
+  if(!DATA) return;
+  const spot=SPOTS[CUR], now=new Date(), hrs=hoursOf(spot);
+  if(!hrs.length) return;
+  const nowH=hrs.find(h=>h.t.getTime()+3600e3>now)||hrs[hrs.length-1];
+  const r=rate(spot,nowH), lv=level(r.score);
+  const upcoming=allSessions(spot).filter(x=>x.end>now);
+  const top=upcoming.length?upcoming.reduce((a,b)=>b.r.score>a.r.score?b:a):null;
+  if(!SEL || !upcoming.find(x=>x.date===SEL.date&&x.key===SEL.key)) SEL=upcoming[0]?{date:upcoming[0].date,key:upcoming[0].key}:null;
+  const buoy=DATA.buoys?.[spot.buoy];
+  const paras=describe(spot,nowH,r);
+
+  let html=`<section class="card">
+    <div class="eyebrow">${esc(spot.name)} · ${nowH.t<=now?"Right now":"Next"}: ${fmtDay(nowH.date,true)}, ${fmtHour(nowH.t)}</div>
     <div class="now" style="margin-top:10px">
       <div class="badge" style="background:${col(r.score)}"><b>${r.score.toFixed(1)}</b><span>${lv[1]}</span></div>
-      <div><h2>${cap(sizeWords(r.face))}, ${windWords(r.wind)}</h2><p class="desc">${slotDesc(nowH,r)} ${feel(spot,r,nowH)}</p></div>
+      <div><h2>${headline(r)}</h2><div class="desc">${paras.map(p=>`<p>${p}</p>`).join("")}<p>${boardFor(spot,r,nowH)}</p></div></div>
     </div>
     <div class="stats">
       <div class="stat"><div class="k">Surf (est.)</div><div class="v">${ft(r.face)}</div></div>
       <div class="stat"><div class="k">Swell</div><div class="v">${nowH.h.toFixed(1)} m · ${nowH.p}s ${nowH.dir}</div></div>
       <div class="stat"><div class="k">Wind</div><div class="v">${nowH.ws} km/h ${nowH.wd}</div></div>
-      <div class="stat"><div class="k">Water</div><div class="v">${nowH.sst!=null?nowH.sst.toFixed(1)+"°C":"–"}</div></div>
+      <div class="stat"><div class="k">Water</div><div class="v">${buoy?.sst?buoy.sst.toFixed(1)+"°C":nowH.sst!=null?nowH.sst.toFixed(1)+"°C":"–"}</div></div>
     </div>
+    ${buoy?`<div class="buoy">🛟 <b>${esc(spot.buoy)} wave buoy</b>${buoy.t?` (${fmtTime(buoy.t)})`:""}: ${buoy.hs.toFixed(2)} m${buoy.tp?` at ${Math.round(buoy.tp)} s`:""}${buoy.dir!=null?` from the ${compass(buoy.dir)}`:""}${buoy.hmax?`, biggest ${buoy.hmax.toFixed(1)} m`:""}. ${Math.abs(buoy.hs-nowH.h)>0.3?`The model has ${nowH.h.toFixed(1)} m, so it's running ${buoy.hs>nowH.h?"under":"over"} what's actually out there.`:"Close to the model forecast."}</div>`:""}
     ${top?`<div class="best">⭐ <span><b>Pick of the week:</b> ${fmtDay(top.date,true)} around ${fmtHour(top.s.t)}, ${ft(top.r.face)}, ${top.s.p}s ${top.s.dir}, ${top.s.ws} km/h ${top.s.wd} (${top.r.score.toFixed(1)}/10)</span></div>`:""}
   </section>
-  <section class="card"><div class="eyebrow">Pick a session for the map and wave view</div><div class="picker" id="picker"></div></section>
+  <section class="card" id="boardCard"></section>
+  <section class="card"><div class="eyebrow">Pick a session for the map, wave view and rankings</div><div class="picker" id="picker"></div></section>
   <section class="card viz" id="mapCard"></section>
   <section class="card viz" id="profileCard"></section>
   <section class="card chart">${weekChart(spot,now)}</section>`;
 
-  const ds=dates(); let prev=null;
+  const ds=dates(spot); let prev=null;
   ds.forEach(d=>{
     const sum=daySummary(spot,d,prev); prev=d;
     if(!sum || T(d+"T23:59")<now) return;
-    const dt = DATA.extremes.filter(x=>dayKey(x.t)===d);
-    html += `<section class="card day">
+    const dt=(DATA.tide?.extremes||[]).filter(x=>dayKey(x.t)===d);
+    const noon=hoursForDay(spot,d).find(h=>h.hour===12);
+    html+=`<section class="card day">
       <div class="dayhead"><h3>${fmtDay(d,true)}</h3><span class="pill" style="background:${col(sum.best.r.score)}">Best ${sum.best.r.score.toFixed(1)} · ${level(sum.best.r.score)[1]}</span></div>
       <p class="daysum">${sum.text}</p>
-      <div class="slots">${sum.ss.map(x=>{const past=x.end<now;
-        return `<div class="slot ${past?"past":""}" data-d="${x.date}" data-k="${x.key}" style="border-top-color:${col(x.r.score)}">
+      <div class="slots">${sum.ss.map(x=>`<div class="slot ${x.end<now?"past":""}" data-d="${x.date}" data-k="${x.key}" style="border-top-color:${col(x.r.score)}">
           <div class="t">${x.label} · ${fmtHour(x.s.t)}</div><div class="h">${ft(x.r.face)}</div>
-          <div class="m">${x.s.h.toFixed(1)}m ${x.s.p}s ${x.s.dir}<br>${x.s.ws} km/h ${x.s.wd}<br>${cap(x.r.wind.k)} · ${x.r.score.toFixed(1)}</div></div>`;}).join("")}</div>
+          <div class="m">${x.s.h.toFixed(1)}m ${x.s.p}s ${x.s.dir}<br>${x.s.ws} km/h ${x.s.wd}<br>${cap(windShort(x.r.wind))} · ${x.r.score.toFixed(1)}</div></div>`).join("")}</div>
       <div class="hourly">${hourStrip(spot,d,now)}</div>
-      <div class="tides">Tides (approx.): ${dt.map(x=>`<b>${x.type==="H"?"High":"Low"}</b> ${fmtTime(x.t)}`).join(" · ")||"n/a"} · ${WX(hoursFor(d).find(h=>h.hour===12)?.code)}, ${Math.round(Math.max(...hoursFor(d).map(h=>h.temp??-99)))}°C</div>
+      <div class="tides">Tides: ${dt.map(x=>`<b>${x.type==="H"?"High":"Low"}</b> ${fmtTime(x.t)}${DATA.tide.lat?` (${x.h.toFixed(2)} m)`:""}`).join(" · ")||"n/a"}${noon?` · ${WX(noon.code)}, ${Math.round(Math.max(...hoursForDay(spot,d).map(h=>h.temp??-99)))}°C`:""}</div>
     </section>`;
   });
-  html += `<section class="card guide"><div class="eyebrow">Spot guide</div><h3 style="font:400 20px 'DM Serif Display',serif;margin:4px 0 0">${spot.name}</h3><ul>${spot.guide.map(g=>`<li>${g}</li>`).join("")}</ul></section>
-  <section class="card links"><div class="eyebrow">Official BOM info</div>
-    <a href="http://www.bom.gov.au/qld/forecasts/sunshine-coast-waters.shtml">Sunshine Coast Waters forecast ↗</a>
-    <a href="http://www.bom.gov.au/australia/tides/#!/qld-mooloolaba">Tide predictions, Mooloolaba ↗</a>
+  html+=`<section class="card guide"><div class="eyebrow">Spot guide</div><h3 style="font:400 20px 'DM Serif Display',serif;margin:4px 0 0">${esc(spot.name)}</h3><ul>${spot.guide.map(g=>`<li>${esc(g)}</li>`).join("")}</ul>
+    <p class="note">Faces ${compass(spot.facing)} · offshore wind from the ${compass(spot.facing+180)} · best swell ${compass(spot.bestSwell)} · ${spot.type} · tide: ${spot.tidePref}${spot.tideMove?`, ${spot.tideMove}`:""}</p></section>
+  <section class="card links"><div class="eyebrow">Official info</div>
+    <a href="http://www.bom.gov.au/qld/forecasts/sunshine-coast-waters.shtml">BOM Sunshine Coast Waters forecast ↗</a>
+    <a href="https://www.qld.gov.au/environment/coasts-waterways/beach/monitoring/waves-sites">Queensland wave buoys (Caloundra, Mooloolaba, Noosa) ↗</a>
+    <a href="http://www.bom.gov.au/australia/tides/#!/qld-mooloolaba">BOM tide tables, Mooloolaba ↗</a>
     <a href="http://www.bom.gov.au/qld/warnings/">Queensland weather warnings ↗</a></section>`;
-  document.getElementById("app").innerHTML = html;
+  document.getElementById("app").innerHTML=html;
   document.querySelectorAll(".slot").forEach(el=>el.onclick=()=>select({date:el.dataset.d,key:el.dataset.k},true));
-  renderPicker(); renderMap(); renderProfile();
-  try{ history.replaceState(null,"","#"+CUR_SPOT); }catch(e){}
+  renderPicker(); renderBoard(); renderMap(); renderProfile();
+  try{ history.replaceState(null,"","#"+CUR); }catch(e){}
+}
+
+function renderBoard(){
+  if(!SEL) return;
+  const S=SESSIONS.find(x=>x.key===SEL.key);
+  const rows=Object.entries(SPOTS).map(([k,sp])=>({k,sp,x:session(sp,SEL.date,SEL.key)})).filter(o=>o.x).sort((a,b)=>b.x.r.score-a.x.r.score||b.x.r.face-a.x.r.face);
+  document.getElementById("boardCard").innerHTML=`<div class="eyebrow">Best spots · ${fmtDay(SEL.date,true)}, ${S.label.toLowerCase()}</div>
+    <div class="board">${rows.map(o=>`<div class="row ${o.k===CUR?"sel":""}" data-k="${o.k}">
+      <div class="sc" style="background:${col(o.x.r.score)}">${o.x.r.score.toFixed(1)}</div>
+      <div class="nm">${esc(o.sp.name)}<small>${esc(o.sp.region)} · ${cap(windShort(o.x.r.wind))} ${o.x.s.ws} km/h${o.x.r.tf<.8?" · wrong tide":""}</small></div>
+      <div class="ft">${ft(o.x.r.face)}<small>${fmtHour(o.x.s.t)}</small></div></div>`).join("")}</div>`;
+  document.querySelectorAll(".row").forEach(el=>el.onclick=()=>{ render(el.dataset.k); window.scrollTo({top:0,behavior:"smooth"}); });
 }
 
 function weekChart(spot,now){
-  const hs=DATA.hours.filter(h=>h.hour>=5&&h.hour<=18), W=660,H=150,pad=22,n=hs.length,bw=(W-pad*2)/n;
-  const maxF=Math.max(...hs.map(h=>h.h*spot.factor),1.5);
-  let bars="",labels="";
-  [0.5,1,1.5,2].filter(v=>v<=maxF).forEach(v=>{const y=H-26-(v/maxF)*(H-50);
-    bars+=`<line x1="${pad}" x2="${W-pad}" y1="${y}" y2="${y}" stroke="#ffffff14"/><text x="${pad-4}" y="${y+4}" text-anchor="end" fill="#6f8b96" font-size="10">${v}</text>`;});
-  hs.forEach((h,i)=>{ const r=rate(spot,h), bh=(r.face/maxF)*(H-50), x=pad+i*bw, y=H-26-bh, past=h.t.getTime()+3600e3<now;
-    bars+=`<rect x="${x}" y="${y}" width="${Math.max(1,bw-0.6)}" height="${bh}" fill="${col(r.score)}" opacity="${past?.3:1}"><title>${fmtDay(h.date)} ${fmtHour(h.t)}: ${ft(r.face)}, ${r.score}/10</title></rect>`;
+  const hs=hoursOf(spot).filter(h=>h.hour>=5&&h.hour<=18), W=660,H=150,pad=22,bw=(W-pad*2)/Math.max(1,hs.length);
+  const maxF=Math.max(...hs.map(h=>rate(spot,h).face),1.5);
+  let g="",labels="";
+  [0.5,1,1.5,2,3].filter(v=>v<=maxF).forEach(v=>{const y=H-26-(v/maxF)*(H-50);
+    g+=`<line x1="${pad}" x2="${W-pad}" y1="${y}" y2="${y}" stroke="#ffffff14"/><text x="${pad-4}" y="${y+4}" text-anchor="end" fill="#6f8b96" font-size="10">${v}</text>`;});
+  hs.forEach((h,i)=>{ const r=rate(spot,h), bh=(r.face/maxF)*(H-50), x=pad+i*bw, past=h.t.getTime()+3600e3<now;
+    g+=`<rect x="${x}" y="${H-26-bh}" width="${Math.max(1,bw-0.6)}" height="${bh}" fill="${col(r.score)}" opacity="${past?.3:1}"><title>${fmtDay(h.date)} ${fmtHour(h.t)}: ${ft(r.face)}, ${r.score}/10</title></rect>`;
     if(h.hour===12) labels+=`<text x="${x}" y="${H-8}" text-anchor="middle" fill="#9fb8c2" font-size="12">${shortDay(h.date)}</text>`; });
-  return `<div class="eyebrow">Estimated surf height (m) · daylight hours, 7 days</div>
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly surf height and rating">${bars}${labels}</svg>
+  return `<div class="eyebrow">Estimated surf height at ${esc(spot.name)} (m) · daylight hours</div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly surf height and rating">${g}${labels}</svg>
     <div class="legend">${LEVELS.map(l=>`<span><i style="background:var(${l[2]})"></i>${l[1]}</span>`).join("")}</div>`;
 }
 function hourStrip(spot,d,now){
-  const hs=hoursFor(d).filter(h=>h.hour>=5&&h.hour<=19), W=660,H=56,bw=W/Math.max(1,hs.length);
+  const hs=hoursForDay(spot,d).filter(h=>h.hour>=5&&h.hour<=19), W=660,H=56,bw=W/Math.max(1,hs.length);
   let g="";
   hs.forEach((h,i)=>{ const r=rate(spot,h), x=i*bw, past=h.t.getTime()+3600e3<now, bh=6+clamp(r.face/2,0,1)*26;
     g+=`<rect x="${x+1}" y="${36-bh}" width="${bw-2}" height="${bh}" rx="3" fill="${col(r.score)}" opacity="${past?.3:1}"><title>${fmtHour(h.t)}: ${ft(r.face)}, ${h.ws} km/h ${h.wd}, ${r.score}/10</title></rect>`;
@@ -389,182 +596,211 @@ function hourStrip(spot,d,now){
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly rating">${g}</svg>`;
 }
 
-function selected(){ const spot=SPOTS[CUR_SPOT]; return SEL?session(spot,SEL.date,SEL.key):null; }
-function select(sel,scroll){ SEL=sel; renderPicker(); renderMap(); renderProfile(); if(scroll) document.getElementById("mapCard").scrollIntoView({behavior:"smooth"}); }
+const selected=()=>SEL?session(SPOTS[CUR],SEL.date,SEL.key):null;
+function select(sel,scroll){ SEL=sel; renderPicker(); renderBoard(); renderMap(); renderProfile(); if(scroll) document.getElementById("mapCard").scrollIntoView({behavior:"smooth"}); }
 function renderPicker(){
-  const spot=SPOTS[CUR_SPOT], now=new Date();
-  const list=allSessions(spot).filter(x=>x.end>now);
-  document.getElementById("picker").innerHTML = list.map((x,i)=>`<button class="chip" data-i="${i}" aria-pressed="${SEL&&x.date===SEL.date&&x.key===SEL.key}" style="border-left-color:${col(x.r.score)}">${shortDay(x.date)} ${x.label}<small>${ft(x.r.face)} · ${x.r.score.toFixed(1)}</small></button>`).join("");
+  const spot=SPOTS[CUR], now=new Date(), list=allSessions(spot).filter(x=>x.end>now);
+  document.getElementById("picker").innerHTML=list.map((x,i)=>`<button class="chip" data-i="${i}" aria-pressed="${SEL&&x.date===SEL.date&&x.key===SEL.key}" style="border-left-color:${col(x.r.score)}">${shortDay(x.date)} ${x.label}<small>${ft(x.r.face)} · ${x.r.score.toFixed(1)}</small></button>`).join("");
   document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const x=list[+b.dataset.i]; select({date:x.date,key:x.key});});
-  const on=document.querySelector('.chip[aria-pressed="true"]'); if(on) on.parentElement.scrollLeft = on.offsetLeft - on.parentElement.clientWidth/2 + on.clientWidth/2;
+  const on=document.querySelector('.chip[aria-pressed="true"]'); if(on) on.parentElement.scrollLeft=on.offsetLeft-on.parentElement.clientWidth/2+on.clientWidth/2;
 }
 
-/* ================= MAP (OpenStreetMap tiles) ================= */
-const merc = (lat,lon,z) => { const n=256*Math.pow(2,z), r=lat*Math.PI/180;
-  return [(lon+180)/360*n, (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n]; };
+/* ======================= MAP (OpenStreetMap tiles) ======================= */
+const merc=(lat,lon,z)=>{ const n=256*Math.pow(2,z), r=lat*Math.PI/180; return [(lon+180)/360*n,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n]; };
+function offsetLL(lat,lon,bearing,km){ const [vx,vy]=bearingVec(bearing); return [lat-vy*km/111.32, lon+vx*km/(111.32*Math.cos(lat*Math.PI/180))]; }
 function renderMap(){
   const x=selected(); if(!x) return;
-  const s=x.s, M=CONFIG.map, z=M.zoom;
-  const [x0,y0]=merc(M.north,M.west,z), [x1,y1]=merc(M.south,M.east,z);
-  const W=x1-x0, H=y1-y0, P=(lat,lon)=>{const [a,b]=merc(lat,lon,z); return [a-x0,b-y0];};
+  const spot=SPOTS[CUR], s=x.s, z=CONFIG.mapZoom;
+  const [cLat,cLon]=offsetLL(spot.lat,spot.lon,spot.facing,0.9);
+  const [cx,cy]=merc(cLat,cLon,z), W=760, H=640, x0=cx-W/2, y0=cy-H/2;
+  const P=(lat,lon)=>{const [a,b]=merc(lat,lon,z); return [a-x0,b-y0];};
   let tiles="";
-  for(let tx=Math.floor(x0/256); tx<=Math.floor(x1/256); tx++) for(let ty=Math.floor(y0/256); ty<=Math.floor(y1/256); ty++)
+  for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++) for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++)
     tiles+=`<image href="https://tile.openstreetmap.org/${z}/${tx}/${ty}.png" x="${tx*256-x0}" y="${ty*256-y0}" width="256" height="256"/>`;
-  const travel=(s.dirDeg+180)%360, [sx,sy]=bearingVec(travel), amp=clamp(s.h/2,.3,1), dur=clamp(s.p*0.3,1.4,4).toFixed(2);
-  let swell="";
-  CONFIG.swellMarks.forEach(([la,lo],i)=>{ const [px,py]=P(la,lo);
-    swell+=`<g transform="translate(${px} ${py}) rotate(${travel})" opacity="${.55+amp*.4}">
-      ${[0,1,2].map(k=>`<path d="M-14,${-k*14} L0,${-k*14-8} L14,${-k*14}" fill="none" stroke="#08324a" stroke-width="${3+amp*2}" stroke-linecap="round" stroke-linejoin="round" style="paint-order:stroke;filter:drop-shadow(0 0 1.5px #fff)">
-        <animate attributeName="opacity" values="0;1;0" dur="${dur}s" begin="${(-k*dur/3-i*0.2).toFixed(2)}s" repeatCount="indefinite"/></path>`).join("")}
-      <animateTransform attributeName="transform" type="translate" additive="sum" values="0 18;0 -18" dur="${dur}s" repeatCount="indefinite"/></g>`; });
-  const wt=(s.wdDeg+180)%360, [vx,vy]=bearingVec(wt), L=14+s.ws*1.0, wc=windCol(s.ws);
+  const travel=(s.dirDeg+180)%360, amp=clamp(s.h/2,.3,1), dur=clamp(s.p*0.3,1.4,4).toFixed(2);
+  let swell="", i=0;
+  for(const km of [1.2,2.2,3.2]) for(const lat of [-1.1,0,1.1]){
+    const [a,b]=offsetLL(spot.lat,spot.lon,spot.facing,km), [la,lo]=offsetLL(a,b,spot.facing+90,lat*(0.6+km*0.3)), [px,py]=P(la,lo);
+    if(px<10||py<10||px>W-10||py>H-30) continue;
+    swell+=`<g transform="translate(${px} ${py}) rotate(${travel})" opacity="${.55+amp*.4}">${[0,1,2].map(k=>`<path d="M-14,${-k*14} L0,${-k*14-8} L14,${-k*14}" fill="none" stroke="#08324a" stroke-width="${3+amp*2}" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 1.5px #fff)"><animate attributeName="opacity" values="0;1;0" dur="${dur}s" begin="${(-k*dur/3-(i++)*0.17).toFixed(2)}s" repeatCount="indefinite"/></path>`).join("")}
+      <animateTransform attributeName="transform" type="translate" additive="sum" values="0 18;0 -18" dur="${dur}s" repeatCount="indefinite"/></g>`;
+  }
+  const wt=(s.wdDeg+180)%360, [vx,vy]=bearingVec(wt), L=14+s.ws, wc=windCol(s.ws);
   let arrows="";
-  for(let yy=50;yy<H;yy+=95) for(let xx=50+((Math.round(yy/95))%2)*48;xx<W;xx+=96)
+  for(let yy=50;yy<H-30;yy+=95) for(let xx=50+(Math.round(yy/95)%2)*48;xx<W;xx+=96)
     arrows+=`<line x1="${xx-vx*L/2}" y1="${yy-vy*L/2}" x2="${xx+vx*L/2}" y2="${yy+vy*L/2}" stroke="#0a1f2c" stroke-width="5" stroke-linecap="round" opacity=".55"/><line x1="${xx-vx*L/2}" y1="${yy-vy*L/2}" x2="${xx+vx*L/2}" y2="${yy+vy*L/2}" stroke="${wc}" stroke-width="3.4" stroke-linecap="round" marker-end="url(#ah)"/>`;
   let pins="";
   Object.entries(SPOTS).forEach(([k,sp])=>{
+    const [px,py]=P(sp.lat,sp.lon); if(px<-20||py<-20||px>W+20||py>H+20) return;
     const ses=session(sp,x.date,x.key); if(!ses) return;
-    const r=ses.r, [px,py]=P(sp.lat,sp.lon), sel=k===CUR_SPOT, rr=sel?20:15;
+    const r=ses.r, sel=k===CUR, rr=sel?20:15, lw=Math.max(sp.name.length*8.4,(ft(r.face).length+3+windShort(r.wind).length)*6.6+14), left=px+rr+6+lw>W;
+    const lx=left?px-rr-6-lw:px+rr+6;
     pins+=`<g style="cursor:pointer" onclick="render('${k}')">
       <circle cx="${px}" cy="${py}" r="${rr+4}" fill="none" stroke="${col(r.score)}" stroke-width="3" opacity="${sel?.9:.5}"><animate attributeName="r" values="${rr+2};${rr+12};${rr+2}" dur="2.4s" repeatCount="indefinite"/></circle>
       <circle cx="${px}" cy="${py}" r="${rr}" fill="${col(r.score)}" stroke="#0a1f2c" stroke-width="2.5"/>
       <text x="${px}" y="${py+5}" text-anchor="middle" font-size="${sel?14:12}" font-weight="700" fill="#0a1f2c">${r.score.toFixed(1)}</text>
-      <rect x="${px+rr+6}" y="${py-18}" width="${Math.max(sp.name.length*8.2,110)}" height="36" rx="8" fill="#0a1f2ce6"/>
-      <text x="${px+rr+13}" y="${py-3}" font-size="14" font-weight="700" fill="#eaf4f4">${sp.name}</text>
-      <text x="${px+rr+13}" y="${py+12}" font-size="11.5" fill="#bfe6e6">${ft(r.face)} · ${r.wind.k}</text></g>`; });
-  const kmPx = 1000/(156543.03*Math.cos(((M.north+M.south)/2)*Math.PI/180)/Math.pow(2,z));
-  const svg=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Map of Caloundra with swell and wind">
+      <rect x="${lx}" y="${py-18}" width="${lw}" height="36" rx="8" fill="#0a1f2ce6"/>
+      <text x="${lx+7}" y="${py-3}" font-size="14" font-weight="700" fill="#eaf4f4">${esc(sp.name)}</text>
+      <text x="${lx+7}" y="${py+12}" font-size="11.5" fill="#bfe6e6">${ft(r.face)} · ${windShort(r.wind)}</text></g>`; });
+  const kmPx=1000/(156543.03*Math.cos(cLat*Math.PI/180)/Math.pow(2,z));
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map around ${esc(spot.name)} with swell and wind">
     <defs><marker id="ah" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${wc}"/></marker></defs>
-    <rect width="${W}" height="${H}" fill="#aad3df"/>${tiles}
-    <rect width="${W}" height="${H}" fill="#0a1f2c" opacity=".18"/>
+    <rect width="${W}" height="${H}" fill="#aad3df"/>${tiles}<rect width="${W}" height="${H}" fill="#0a1f2c" opacity=".16"/>
     ${swell}${arrows}${pins}
     <g transform="translate(${W-46} 46)"><circle r="24" fill="#0a1f2cd9"/><path d="M0,-16 L6,4 L0,0 L-6,4 Z" fill="#f2c57c"/><text y="18" text-anchor="middle" font-size="11" fill="#eaf4f4" font-weight="700">N</text></g>
     <g transform="translate(18 ${H-60})"><rect x="-6" y="-14" width="${kmPx+60}" height="30" rx="8" fill="#0a1f2cd9"/><line x1="0" y1="4" x2="${kmPx}" y2="4" stroke="#eaf4f4" stroke-width="3"/><line x1="0" y1="-2" x2="0" y2="10" stroke="#eaf4f4" stroke-width="2"/><line x1="${kmPx}" y1="-2" x2="${kmPx}" y2="10" stroke="#eaf4f4" stroke-width="2"/><text x="${kmPx+10}" y="9" font-size="12" fill="#eaf4f4">1 km</text></g>
     <g transform="translate(0 ${H-20})"><rect width="${W}" height="20" fill="#ffffffcc"/><text x="${W-8}" y="14" text-anchor="end" font-size="11" fill="#333">© OpenStreetMap contributors</text></g>
   </svg>`;
   const tide=tideAt(s.t);
-  document.getElementById("mapCard").innerHTML = `
-    <div class="vizhead"><div><div class="eyebrow">Map · ${fmtDay(x.date,true)}, ${fmtHour(s.t)}</div><h3>Swell &amp; wind around Caloundra</h3></div></div>
+  document.getElementById("mapCard").innerHTML=`
+    <div class="vizhead"><div><div class="eyebrow">Map · ${fmtDay(x.date,true)}, ${fmtHour(s.t)}</div><h3>Swell &amp; wind around ${esc(spot.name)}</h3></div></div>
     <div style="margin-top:10px"><a href="https://www.openstreetmap.org/copyright" style="display:block">${svg}</a></div>
     <div class="mini">
       <div class="stat"><div class="k">Swell</div><div class="v">${s.h.toFixed(1)} m · ${s.p}s ${s.dir}</div></div>
       <div class="stat"><div class="k">Wind</div><div class="v" style="color:${wc}">${s.ws} km/h ${s.wd}</div></div>
       <div class="stat"><div class="k">Gusts</div><div class="v">${s.gust??"–"} km/h</div></div>
-      <div class="stat"><div class="k">Tide</div><div class="v">${tide?`${tide.rising?"Rising ↑":"Falling ↓"}`:"–"}</div></div>
+      <div class="stat"><div class="k">Tide</div><div class="v">${tide?`${tide.norm<.3?"Low":tide.norm>.7?"High":"Mid"} ${tide.rising?"↑":"↓"}`:"–"}</div></div>
       <div class="stat"><div class="k">Sky</div><div class="v">${WX(s.code)}${s.temp!=null?`, ${Math.round(s.temp)}°C`:""}</div></div>
       <div class="stat"><div class="k">Water</div><div class="v">${s.sst!=null?s.sst.toFixed(1)+"°C":"–"}</div></div>
     </div>
-    <div class="note">Dark chevrons show the swell rolling in from the ${s.dir}; the longer the period, the slower they pulse. Arrows show which way the wind is blowing (pale = light, gold = moderate, red = fresh). Tap a pin to switch spots.</div>`;
+    <div class="note">Dark chevrons show the swell rolling in from the ${s.dir}; the longer the period, the slower they pulse. Arrows show which way the wind is blowing (pale = light, gold = moderate, red = fresh). Tap any pin to switch spots.</div>`;
 }
 
-/* ================= SIDE VIEW ================= */
+/* ======================= SIDE VIEW ======================= */
 function renderProfile(){
   const x=selected(); if(!x) return;
-  const s=x.s, spot=SPOTS[CUR_SPOT], r=x.r, tide=tideAt(s.t);
-  const W=660,H=340, sea=165-(tide?(tide.norm-.5)*24:0), breakX=210;
-  const face=r.face, back=face*0.55, faceDrawn=clamp(face*60,40,105), spacing=clamp(s.p*13,60,140);
-  let pts=[], phase=0, crestXs=[];
-  for(let xx=W;xx>=breakX+40;xx-=2){
-    const t=(xx-breakX)/(W-breakX), A=(faceDrawn*0.5)*(0.55+0.45*(1-t)), loc=spacing*(0.65+0.35*t);
-    phase+=2*Math.PI*2/loc;
-    const c=Math.cos(phase), y=sea - A*(Math.pow((1+c)/2,2.2)*2-0.5);
+  const s=x.s, spot=SPOTS[CUR], r=x.r, tide=tideAt(s.t);
+  const W=660, H=360, y0=176-(tide?(tide.norm-.5)*18:0);         // still-water level (moves with tide)
+  const face=r.face, back=face*0.55;
+  const F=clamp(40+face*48,58,128), bx=250;                          // F = drawn face height (px), bx = crest x
+  const crestY=y0-0.45*F, troughF=y0+0.55*F, troughB=y0+0.10*F;   // face = crest→front trough, back = crest→back trough
+  // --- unbroken swell behind the breaker (smaller, growing towards shore) ---
+  const spacing=clamp(s.p*14,70,170), x1=bx+0.95*F;
+  let pts=[], crests=[], phase=Math.PI;
+  for(let xx=x1; xx<=W+4; xx+=2){
+    const t=(xx-x1)/(W-x1), A=F*(0.24-0.08*t);                     // half-height
+    const y = troughB - A*(1+Math.cos(phase)) * (0.5+0.5*Math.pow((1+Math.cos(phase))/2,1.5));
     pts.push([xx,y]);
-    if(Math.cos(phase-2*Math.PI*2/loc)<c && Math.cos(phase+2*Math.PI*2/loc)<c) crestXs.push([xx,y]);
+    const nxt=phase+2*Math.PI*2/spacing;
+    if(Math.cos(phase)>=.999 || (Math.cos(phase)>Math.cos(phase-2*Math.PI*2/spacing) && Math.cos(phase)>=Math.cos(nxt))) crests.push([xx,y]);
+    phase=nxt;
   }
-  const bx=breakX, top=sea-faceDrawn*0.85, trough=sea+faceDrawn*0.15, lastY=pts[pts.length-1][1], F=faceDrawn;
-  const breaker=`L${bx+40},${lastY} C${bx+30},${top+6} ${bx+16},${top-2} ${bx-2},${top} C${bx-22},${top-1} ${bx-36},${top+F*.08} ${bx-40},${top+F*.32}
-    C${bx-40},${top+F*.44} ${bx-30},${top+F*.46} ${bx-24},${top+F*.36} C${bx-18},${top+F*.48} ${bx-12},${trough-F*.25} ${bx-18},${trough}`;
-  const beachX=60;
-  let foam=""; for(let xx=bx-14,k=0;xx>beachX;xx-=12,k++){ const yy=sea+2+Math.sin(xx/9)*2; foam+=`<circle cx="${xx}" cy="${yy}" r="${3+((k*37)%30)/10}" fill="#eaf4f4" opacity="${.35+((k*53)%40)/100}"/>`; }
-  const waterPath=`M${W},${H} L${W},${pts[0][1]} ${pts.map(p=>`L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")} ${breaker} L${beachX},${sea+3} L${beachX},${H} Z`;
-  const linePath=`M${pts.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L")} ${breaker} L${beachX},${sea+3}`;
-  const seabedTop=`M0,${sea-30} L${beachX},${sea+2} C${bx-30},${sea+30} ${bx+30},${trough+30} ${bx+120},${trough+55} C${bx+250},${trough+85} ${W-100},${H-36} ${W},${H-30}`;
+  pts.reverse();
+  // --- breaking wave: back slope → crest → throwing lip → barrel → steep concave face → drawn-down trough ---
+  const onshore = r.wind.k==="onshore"||r.wind.k==="cross-onshore";
+  const plunge = s.p>=9 && !onshore ? 1 : .55;                    // groundswell + clean wind → more pitch
+  const lipX=bx-0.78*F*plunge, lipY=y0+0.18*F;
+  const breaker = `L${x1},${troughB} C${bx+0.55*F},${troughB} ${bx+0.28*F},${crestY+0.05*F} ${bx},${crestY}
+    C${bx-0.32*F*plunge},${crestY-0.04*F} ${bx-0.66*F*plunge},${crestY+0.2*F} ${lipX},${lipY}
+    C${lipX+0.06*F},${lipY+0.06*F} ${lipX+0.2*F},${lipY-0.02*F} ${lipX+0.24*F},${lipY-0.14*F}
+    C${bx-0.36*F*plunge},${crestY+0.22*F} ${bx-0.14*F},${crestY+0.2*F} ${bx-0.12*F},${crestY+0.42*F}
+    C${bx-0.12*F},${y0+0.2*F} ${bx-0.3*F},${troughF} ${bx-0.5*F},${troughF}
+    C${bx-0.78*F},${troughF} ${bx-0.98*F},${y0+0.12*F} ${bx-1.25*F},${y0+0.02*F}`;
+  const beachX=58, foamStart=bx-1.25*F;
+  const waterPath=`M${W+4},${H} L${W+4},${pts[0][1]} ${pts.map(p=>`L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")} ${breaker} L${beachX},${y0+2} L${beachX},${H} Z`;
+  const linePath=`M${pts.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L")} ${breaker} L${beachX},${y0+2}`;
+  let foam=""; for(let xx=foamStart, k=0; xx>beachX+4; xx-=11, k++){ const yy=y0+Math.sin(xx/8)*2; foam+=`<circle cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="${(3+((k*37)%30)/10).toFixed(1)}" fill="#eaf4f4" opacity="${(.35+((k*53)%40)/100).toFixed(2)}"/>`; }
+  if(onshore){ for(let k=0;k<6;k++){ const t=k/5, px=bx-(0.05+0.5*t)*F*plunge, py=crestY+0.02*F+t*t*0.25*F; foam+=`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${3+k%3}" fill="#f4fbfb" opacity=".8"/>`; } }
+  // --- seabed: sandbar (beach) or rock shelf (point/reef) under the break ---
+  const bedBreak=troughF+16, rocky=spot.type!=="beach";
+  const seabedTop = rocky
+    ? `M0,${y0-34} L${beachX},${y0+2} C${beachX+40},${y0+14} ${bx-0.9*F},${bedBreak+4} ${bx-0.3*F},${bedBreak} L${bx+0.2*F},${bedBreak-3} L${bx+0.5*F},${bedBreak+6} C${bx+1.4*F},${bedBreak+30} ${W-140},${H-40} ${W},${H-32}`
+    : `M0,${y0-34} L${beachX},${y0+2} C${beachX+50},${y0+22} ${bx-1.2*F},${bedBreak+28} ${bx-0.75*F},${bedBreak+18} C${bx-0.4*F},${bedBreak+4} ${bx-0.1*F},${bedBreak-2} ${bx+0.2*F},${bedBreak+2} C${bx+1.1*F},${bedBreak+30} ${W-140},${H-40} ${W},${H-32}`;
   const seabed=seabedTop+` L${W},${H} L0,${H} Z`;
-  const wk=r.wind.k, offish=wk==="offshore"||wk==="cross-offshore", onish=wk==="onshore"||wk==="cross-onshore", dirSign=offish?1:onish?-1:0;
-  const wc=windCol(s.ws), wl=14+s.ws*1.1;
+  let rocks=""; if(rocky) for(let k=0;k<9;k++){ const rx=bx-0.9*F+k*0.17*F, ry=bedBreak+2+((k*7)%5); rocks+=`<ellipse cx="${rx.toFixed(1)}" cy="${ry.toFixed(1)}" rx="${(7+k%3*3)}" ry="${(4+k%2*2)}" fill="#6d5a3e"/>`; }
+  // --- wind across the top ---
+  const wk=r.wind.k, offish=wk==="offshore"||wk==="cross-offshore", dirSign=offish?1:onshore?-1:0, wc=windCol(s.ws), wl=14+s.ws*1.1;
   let wind="";
   if(wk==="glassy") wind=`<text x="${W/2}" y="30" text-anchor="middle" fill="#bfe6e6" font-size="13">Glassy · barely any wind</text>`;
   else if(dirSign){ for(let xx=110;xx<W-40;xx+=110) wind+=`<line x1="${xx-dirSign*wl/2}" y1="40" x2="${xx+dirSign*wl/2}" y2="40" stroke="${wc}" stroke-width="3" stroke-linecap="round" marker-end="url(#wah)"/>`;
-    wind+=`<text x="${W/2}" y="22" text-anchor="middle" fill="${wc}" font-size="12.5" font-weight="600">${s.ws} km/h ${s.wd} · ${wk} ${offish?"(holds the face up)":"(pushes the wave over, crumbly)"}</text>`; }
+    wind+=`<text x="${W/2}" y="22" text-anchor="middle" fill="${wc}" font-size="12.5" font-weight="600">${s.ws} km/h ${s.wd} · ${wk} ${offish?"(holds the face up)":"(pushes the lip over early)"}</text>`; }
   else { for(let xx=120;xx<W-40;xx+=110) wind+=`<circle cx="${xx}" cy="40" r="7" fill="none" stroke="${wc}" stroke-width="2"/><circle cx="${xx}" cy="40" r="2" fill="${wc}"/>`;
     wind+=`<text x="${W/2}" y="22" text-anchor="middle" fill="${wc}" font-size="12.5" font-weight="600">${s.ws} km/h ${s.wd} · cross-shore (blowing along the beach)</text>`; }
-  const spray = offish&&s.ws>8 ? [0,1,2,3,4].map(i=>`<line x1="${bx+4+i*3}" y1="${top-2}" x2="${bx+18+i*7}" y2="${top-12-i*3}" stroke="#eaf4f4" stroke-width="1.4" opacity=".7" stroke-linecap="round"/>`).join("") : "";
-  const dim=(xx,y1,y2,clr)=>`<line x1="${xx}" y1="${y1}" x2="${xx}" y2="${y2}" stroke="${clr}" stroke-width="1.6" marker-start="url(#dah)" marker-end="url(#dah)"/>`;
-  let ann = dim(bx-52,top,trough,"#f2c57c")
-    + `<text x="${bx-60}" y="${top+4}" text-anchor="end" fill="#f2c57c" font-size="13" font-weight="700">Face ${face.toFixed(1)} m</text><text x="${bx-60}" y="${top+19}" text-anchor="end" fill="#f2c57c" font-size="11">${ft(face)}</text>`
-    + dim(bx+40,top,top+faceDrawn*0.55,"#bfe6e6")
-    + `<text x="${bx+48}" y="${top+faceDrawn*0.3}" text-anchor="start" fill="#dff3f3" font-size="12" font-weight="600">Back ~${back.toFixed(1)} m</text>`;
-  const cr=crestXs.filter(c=>c[0]>bx+90);
+  const spray = offish&&s.ws>8 ? [0,1,2,3,4,5].map(i=>`<line x1="${bx+2+i*3}" y1="${crestY-1}" x2="${bx+14+i*8}" y2="${crestY-10-i*4}" stroke="#eaf4f4" stroke-width="1.3" opacity=".7" stroke-linecap="round"/>`).join("") : "";
+  // --- annotations ---
+  const dim=(xx,y1,y2,clr)=>`<line x1="${xx}" y1="${y1}" x2="${xx}" y2="${y2}" stroke="${clr}" stroke-width="1.7" marker-start="url(#dah)" marker-end="url(#dah)"/>`;
+  const guide=(xa,xb,y,clr)=>`<line x1="${xa}" y1="${y}" x2="${xb}" y2="${y}" stroke="${clr}" stroke-dasharray="3 3" stroke-width="1.2" opacity=".75"/>`;
+  const fx=bx-1.12*F-8, bxk=bx+0.62*F;
+  let ann = guide(fx-4,bx-4,crestY,"#f2c57c")+guide(fx-4,bx-0.5*F,troughF,"#f2c57c")+dim(fx,crestY,troughF,"#f2c57c")
+    + `<text x="${fx}" y="${crestY-24}" text-anchor="middle" fill="#f2c57c" font-size="13.5" font-weight="700">Face ${face.toFixed(1)} m</text>`
+    + `<text x="${fx}" y="${crestY-10}" text-anchor="middle" fill="#f2c57c" font-size="11.5">${ft(face)}</text>`
+    + guide(bx+4,bxk+4,crestY,"#bfe6e6")+guide(bx+0.3*F,bxk+4,troughB,"#bfe6e6")+dim(bxk,crestY,troughB,"#bfe6e6")
+    + `<text x="${bxk}" y="${crestY-10}" text-anchor="middle" fill="#dff3f3" font-size="12" font-weight="600">Back ~${back.toFixed(1)} m</text>`
+    + `<text x="${bx-0.5*F}" y="${troughF+15}" text-anchor="middle" fill="#cfe7ec" font-size="9.5" opacity=".9">drawn-down trough</text>`
+    + `<text x="${bx-0.42*F}" y="${bedBreak+22}" text-anchor="middle" fill="#4d3c1f" font-size="10" font-weight="600">${rocky?(spot.type==="reef"?"REEF":"ROCK SHELF"):"SANDBAR"}</text>`;
+  const cr=crests.filter(c=>c[0]>x1+30&&c[0]<W-30).sort((a,b)=>a[0]-b[0]);
   if(cr.length>=3){
-    const a=cr[2], b=cr[1], yb=Math.max(Math.min(a[1],b[1])-24,92);
+    const a=cr[1], b=cr[2], yb=Math.max(Math.min(a[1],b[1])-26,78), mx=Math.min((a[0]+b[0])/2,W-125);
     ann+=`<line x1="${a[0]}" y1="${yb}" x2="${b[0]}" y2="${yb}" stroke="#eaf4f4" stroke-width="1.4" marker-start="url(#pah)" marker-end="url(#pah)"/>
       <line x1="${a[0]}" y1="${a[1]-4}" x2="${a[0]}" y2="${yb+4}" stroke="#eaf4f4" stroke-dasharray="2 3" opacity=".6"/><line x1="${b[0]}" y1="${b[1]-4}" x2="${b[0]}" y2="${yb+4}" stroke="#eaf4f4" stroke-dasharray="2 3" opacity=".6"/>
-      <text x="${(a[0]+b[0])/2}" y="${yb-22}" text-anchor="middle" fill="#eaf4f4" font-size="12.5" font-weight="700">Period ${s.p} s</text>
-      <text x="${(a[0]+b[0])/2}" y="${yb-8}" text-anchor="middle" fill="#9fb8c2" font-size="10.5">time between crests · ≈${Math.round(1.56*s.p*s.p)} m apart offshore</text>`;
-    const c=cr[0], tr=sea+(c[1]<sea?(sea-c[1])*0.35:6);
-    ann+=dim(c[0],c[1],tr,"#9fd0e0")+`<text x="${c[0]-8}" y="${sea+30}" text-anchor="end" fill="#dff3f3" font-size="12" font-weight="600">Swell ${s.h.toFixed(1)} m</text><text x="${c[0]-8}" y="${sea+44}" text-anchor="end" fill="#bfe6e6" font-size="10.5">open water</text>`;
+      <text x="${mx}" y="${yb-20}" text-anchor="middle" fill="#eaf4f4" font-size="12.5" font-weight="700">Period ${s.p} s</text>
+      <text x="${mx}" y="${yb-7}" text-anchor="middle" fill="#9fb8c2" font-size="10.5">between crests · ≈${Math.round(1.56*s.p*s.p)} m apart offshore</text>`;
+    const c=cr[0];
+    ann+=`<text x="${c[0]}" y="${troughB+30}" text-anchor="middle" fill="#dff3f3" font-size="11.5" font-weight="600">Swell ${s.h.toFixed(1)} m</text><text x="${c[0]}" y="${troughB+43}" text-anchor="middle" fill="#bfe6e6" font-size="10">open water</text>`;
   }
-  const px=24, pg=sea-30+32*px/beachX, ph=48;
-  const person=`<g stroke="#eaf4f4" stroke-width="2" stroke-linecap="round" fill="none" opacity=".9"><circle cx="${px}" cy="${pg-ph+5}" r="5"/><line x1="${px}" y1="${pg-ph+10}" x2="${px}" y2="${pg-ph+30}"/><line x1="${px}" y1="${pg-ph+30}" x2="${px-6}" y2="${pg}"/><line x1="${px}" y1="${pg-ph+30}" x2="${px+6}" y2="${pg}"/><line x1="${px}" y1="${pg-ph+16}" x2="${px+10}" y2="${pg-ph+24}"/><line x1="${px+12}" y1="${pg-ph+2}" x2="${px+14}" y2="${pg+2}" stroke="#f2c57c" stroke-width="4"/></g><text x="${px+2}" y="${pg-ph-6}" text-anchor="middle" fill="#9fb8c2" font-size="9.5">1.8 m</text>`;
-  const tideTxt = tide?`Tide ${tide.rising?"rising":"dropping"}, ${tide.norm<.3?"near low":tide.norm>.7?"near high":"mid"}`:"Tide n/a";
-  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Side view of the waves">
+  const px=26, pg=y0-34+36*px/beachX, ph=46;
+  const person=`<g stroke="#eaf4f4" stroke-width="2" stroke-linecap="round" fill="none" opacity=".9"><circle cx="${px}" cy="${pg-ph+5}" r="5"/><line x1="${px}" y1="${pg-ph+10}" x2="${px}" y2="${pg-ph+29}"/><line x1="${px}" y1="${pg-ph+29}" x2="${px-6}" y2="${pg}"/><line x1="${px}" y1="${pg-ph+29}" x2="${px+6}" y2="${pg}"/><line x1="${px}" y1="${pg-ph+16}" x2="${px+10}" y2="${pg-ph+24}"/><line x1="${px+12}" y1="${pg-ph+1}" x2="${px+14}" y2="${pg+2}" stroke="#f2c57c" stroke-width="4"/></g><text x="${px+2}" y="${pg-ph-6}" text-anchor="middle" fill="#9fb8c2" font-size="9.5">1.8 m</text>`;
+  const tideTxt = tide?`Tide ${tide.rising?"rising":"falling"}, ${tide.norm<.3?"near low":tide.norm>.7?"near high":"mid"}`:"Tide n/a";
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Side view of the waves at ${esc(spot.name)}">
     <defs>
       <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#173d52"/><stop offset="1" stop-color="#245a70"/></linearGradient>
-      <linearGradient id="wat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a8fa3"/><stop offset=".5" stop-color="#14607a"/><stop offset="1" stop-color="#0b3346"/></linearGradient>
+      <linearGradient id="wat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f9db0"/><stop offset=".45" stop-color="#16667f"/><stop offset="1" stop-color="#0b3346"/></linearGradient>
+      <linearGradient id="lipg" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd3de" stop-opacity=".0"/><stop offset="1" stop-color="#bff0f4" stop-opacity=".55"/></linearGradient>
       <marker id="wah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${wc}"/></marker>
       <marker id="dah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f2c57c"/></marker>
       <marker id="pah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#eaf4f4"/></marker>
     </defs>
     <rect width="${W}" height="${H}" fill="url(#sky)"/>${wind}
     <path d="${waterPath}" fill="url(#wat)"/>
-    <path d="${linePath}" fill="none" stroke="#dff3f3" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M${bx},${crestY} C${bx-0.32*F*plunge},${crestY-0.04*F} ${bx-0.66*F*plunge},${crestY+0.2*F} ${lipX},${lipY} L${bx-0.12*F},${crestY+0.42*F} Z" fill="url(#lipg)"/>
+    <path d="${linePath}" fill="none" stroke="#e6f6f6" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="${seabed}" fill="#c9a96b"/>${rocks}<path d="${seabedTop}" fill="none" stroke="#e9d6a8" stroke-width="1.5"/>
     ${spray}${foam}
-    <path d="${seabed}" fill="#c9a96b"/><path d="${seabedTop}" fill="none" stroke="#e9d6a8" stroke-width="1.5"/>
-    <line x1="${beachX}" y1="${sea}" x2="${W}" y2="${sea}" stroke="#ffffff" stroke-dasharray="3 5" opacity=".25"/>
-    <text x="${W-10}" y="${sea+70}" text-anchor="end" fill="#cfe7ec" font-size="10.5" opacity=".85">${tideTxt}</text>
+    <line x1="${beachX}" y1="${y0}" x2="${W}" y2="${y0}" stroke="#ffffff" stroke-dasharray="3 6" opacity=".22"/>
+    <text x="${W-10}" y="${troughB+62}" text-anchor="end" fill="#cfe7ec" font-size="10" opacity=".85">dashed line = still-water level · ${tideTxt}</text>
     ${ann}${person}
     <text x="12" y="${H-10}" fill="#4d3c1f" font-size="10" font-weight="600">BEACH</text>
     <text x="${W-10}" y="${H-10}" text-anchor="end" fill="#4d3c1f" font-size="10" font-weight="600">OUT TO SEA →</text>
   </svg>`;
-  document.getElementById("profileCard").innerHTML = `
-    <div class="vizhead"><div><div class="eyebrow">Side view · ${spot.name} · ${fmtDay(x.date,true)}, ${fmtHour(s.t)}</div><h3>${cap(sizeWords(face))}, ${s.p}-second ${swellType(s.p)}</h3></div>
+  document.getElementById("profileCard").innerHTML=`
+    <div class="vizhead"><div><div class="eyebrow">Side view · ${esc(spot.name)} · ${fmtDay(x.date,true)}, ${fmtHour(s.t)}</div><h3>${cap(sizeWords(face))}, ${s.p}-second ${swellType(s.p)}</h3></div>
       <span class="pill" style="background:${col(r.score)}">${r.score.toFixed(1)} · ${level(r.score)[1]}</span></div>
     <div style="margin-top:10px">${svg}</div>
-    <div class="note">Face height is the front of the breaking wave, trough to lip: what you'd actually ride. Back height (~55% of the face) is how it looks from behind, the old Hawaiian way of measuring. Period is the time between crests; longer periods mean more power and better-lined-up sets. The shape is a diagram; the heights are labelled, not drawn to scale.</div>`;
+    <div class="note">As a swell reaches shallow water it slows, steepens and grows. Water is drawn off the ${rocky?"reef":"bank"} in front of the wave, so the <b>face</b> (trough to lip, what you ride) ends up much taller than the <b>back</b> (about half the face, the old Hawaiian way of measuring). <b>Period</b> is the time between crests: longer periods carry more energy, so the wave pitches harder. ${offish?"Offshore wind holds the lip up and makes it throw.":onshore?"Onshore wind pushes the lip over early, so it crumbles instead of pitching.":""} Shape is a diagram; heights are labelled, not drawn to scale.</div>`;
 }
 
-/* ================= BOOT ================= */
+/* ======================= BOOT ======================= */
 function setStatus(){
   if(!DATA) return;
   const mins=Math.round((Date.now()-DATA.fetched)/60000);
-  document.getElementById("issued").textContent = `Sunshine Coast · live forecast · updated ${mins<1?"just now":mins<60?mins+" min ago":fmtDay(dayKey(new Date(DATA.fetched)))+" "+fmtTime(new Date(DATA.fetched))} · wind: ${DATA.modelUsed}`;
+  const extras=[DATA.tide?.lat?"official tides":null, DATA.buoys?"live buoys":null].filter(Boolean);
+  document.getElementById("issued").textContent=`Updated ${mins<1?"just now":mins<60?mins+" min ago":fmtDay(dayKey(new Date(DATA.fetched)))+" "+fmtTime(new Date(DATA.fetched))} · wind: ${DATA.modelUsed}${extras.length?" · "+extras.join(" + "):""}`;
 }
 async function refresh(){
   const btn=document.getElementById("refreshBtn"), err=document.getElementById("errBox");
   btn.disabled=true; err.innerHTML="";
   try{
-    const d=await fetchAll();
-    if(!d.hours.length) throw new Error("no usable hours in forecast");
-    DATA=d; saveCache(d); render(); setStatus();
+    const [fc, tide, buoys]=await Promise.all([fetchForecast(), fetchTides().catch(()=>null), fetchBuoys().catch(()=>null)]);
+    if(!Object.values(fc.zones).some(z=>z.hours.length)) throw new Error("no usable hours in forecast");
+    fc.tide = tide || modelTides(fc.zones.caloundra?.hours || Object.values(fc.zones)[0].hours);
+    fc.buoys = buoys;
+    DATA=fc; saveCache(fc); render(); setStatus();
   }catch(e){
-    err.innerHTML=`<div class="err">Couldn't fetch the latest forecast (${e.message}). ${DATA?"Showing the last saved one.":"Check your connection and tap Refresh."}</div>`;
+    err.innerHTML=`<div class="err">Couldn't fetch the latest forecast (${esc(e.message)}). ${DATA?"Showing the last saved one.":"Check your connection and tap Refresh."}</div>`;
   }finally{ btn.disabled=false; }
 }
 function init(){
-  const tabs=document.getElementById("tabs");
-  Object.entries(SPOTS).forEach(([k,s])=>{ const b=document.createElement("button"); b.className="tab"; b.dataset.k=k; b.setAttribute("role","tab");
-    b.innerHTML=`${s.name}<small>${s.sub}</small>`; b.onclick=()=>render(k); tabs.appendChild(b); });
   document.getElementById("refreshBtn").onclick=refresh;
-  document.getElementById("foot").innerHTML=`Live data from <a href="https://open-meteo.com/">Open-Meteo</a> (marine wave models; wind from the Bureau of Meteorology ACCESS-G model where available). Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
-    Tide times come from the model's sea level and are approximate; use <a href="http://www.bom.gov.au/australia/tides/#!/qld-mooloolaba">BOM tide tables</a> for exact times. Surf height and the 0–10 rating are this app's estimates, based on each break's exposure, preferred swell angle, offshore wind direction and (for Happys) tide. Always check the water yourself before paddling out.`;
-  const h=(location.hash||"").slice(1); if(SPOTS[h]) CUR_SPOT=h;
-  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b.dataset.k===CUR_SPOT));
+  document.getElementById("foot").innerHTML=`Forecast from <a href="https://open-meteo.com/">Open-Meteo</a> (ocean wave models; wind from the Bureau of Meteorology ACCESS-G model where available). Live buoys from the Queensland Government <a href="https://www.qld.gov.au/environment/coasts-waterways/beach/monitoring/waves-sites">Coastal Data System</a>; tide predictions from <a href="https://www.msq.qld.gov.au/tides">Maritime Safety Queensland</a> (Mooloolaba), falling back to a model estimate if unavailable. Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
+    Surf heights and 0–10 ratings are this app's estimates, from each break's exposure, swell window, offshore wind direction and tide preference. Always check the water yourself before paddling out.`;
+  const h=(location.hash||"").slice(1); if(SPOTS[h]) CUR=h;
+  renderSpots();
   const cached=loadCache();
-  if(cached && cached.hours?.length){ DATA=cached; render(); setStatus(); }
+  if(cached && cached.zones){ DATA=cached; render(); setStatus(); }
   refresh();
-  setInterval(()=>{ setStatus(); if(document.visibilityState==="visible" && DATA && Date.now()-DATA.fetched > CONFIG.autoRefreshMinutes*60000) refresh(); }, 60000);
-  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && DATA && Date.now()-DATA.fetched > CONFIG.autoRefreshMinutes*60000) refresh(); });
-  window.addEventListener("hashchange",()=>{const k=location.hash.slice(1); if(SPOTS[k]) render(k);});
+  setInterval(()=>{ setStatus(); if(document.visibilityState==="visible" && DATA && Date.now()-DATA.fetched>CONFIG.autoRefreshMinutes*60000) refresh(); }, 60000);
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && DATA && Date.now()-DATA.fetched>CONFIG.autoRefreshMinutes*60000) refresh(); });
+  window.addEventListener("hashchange",()=>{ const k=location.hash.slice(1); if(SPOTS[k]&&k!==CUR) render(k); });
 }
 init();
 </script>
